@@ -3,8 +3,10 @@ using UnityEngine;
 public class Projectile : MonoBehaviour
 {
     [SerializeField] private float speed = 20f;
-    [SerializeField] private float lifetime = 2f; // Tempo em segundos antes de se destruir
-    [SerializeField] private float damage = 1f;
+    [SerializeField] private float lifetime = 2f;
+    
+    // O dano agora é uma variável privada, definida pela arma.
+    private float damageAmount; 
 
     private Rigidbody2D rb;
 
@@ -15,32 +17,41 @@ public class Projectile : MonoBehaviour
 
     void Start()
     {
-        // Dispara o projétil para "frente" (no seu eixo Y local)
-        rb.velocity = transform.up * speed;
-        // Destrói o projétil depois de 'lifetime' segundos para não poluir a cena
+        rb.velocity = transform.right * speed;
         Destroy(gameObject, lifetime);
     }
+    
+    // NOVA FUNÇÃO: A arma chama esta função para definir o dano.
+    public void SetDamage(float damage)
+    {
+        damageAmount = damage;
+    }
 
+    // FUNÇÃO ATUALIZADA
     void OnTriggerEnter2D(Collider2D other)
     {
-        // Verificamos se o objeto que atingimos tem a tag "Enemy"
         if (other.CompareTag("Enemy"))
         {
-            // Tentamos pegar o componente HealthSystem do objeto atingido
             HealthSystem enemyHealth = other.GetComponent<HealthSystem>();
-            
-            // Se o inimigo realmente tem um sistema de vida...
             if (enemyHealth != null)
             {
-                // ...chamamos a função para causar dano!
-                enemyHealth.TakeDamage(damage); // Causa 5 de dano. Você pode tornar isso uma variável.
+                // 1. Cria o pacote de dano com o valor que recebemos da arma.
+                DamageInfo damagePacket = new DamageInfo(damageAmount, DamageType.Standard);
+
+                // 2. Chama a função TakeDamage. Como é um projétil, não passamos
+                //    o segundo parâmetro (damageSource), então nenhum cooldown será aplicado ao inimigo.
+                enemyHealth.TakeDamage(damagePacket);
+                
+                Destroy(gameObject);
+
             }
         }
         
-        // O projétil se destrói ao atingir QUALQUER COISA (exceto outros triggers que não sejam inimigos)
-        // Para evitar que o projétil seja destruído por coisas que não deveria, podemos adicionar uma checagem.
-        // if (!other.isTrigger) { Destroy(gameObject); }
-        // Por enquanto, vamos manter simples:
-        Destroy(gameObject);
+        // Se o objeto que atingimos não for um trigger (como uma parede), o projétil se destrói.
+        // Isso evita que ele seja destruído por triggers como a área de coleta de moedas.
+        if (!other.isTrigger)
+        {
+            Destroy(gameObject);
+        }
     }
 }

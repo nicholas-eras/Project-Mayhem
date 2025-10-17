@@ -4,53 +4,55 @@ public class EnemyController : MonoBehaviour
 {
     [Header("Stats")]
     [SerializeField] private float moveSpeed = 4f;
+    [SerializeField] private int collisionDamage = 10;
 
-    // Variáveis para guardar referências
+    [Header("Tipo de Dano")]
+    [SerializeField] private DamageType damageType = DamageType.Standard;
+
+    [Header("Configurações de Chefe")]
+    [Tooltip("Marque se este inimigo for um chefe.")]
+    public bool isBoss = false;
+
+    [Tooltip("O prefab da barra de vida que será instanciado.")]
+    public GameObject worldHealthBarPrefab;
+
+    [Tooltip("O ponto de ancoragem para a barra de vida (um objeto filho vazio).")]
+    public Transform healthBarMountPoint;
+
     private Transform playerTarget;
-    private Rigidbody2D rb;
-
-    void Awake()
-    {
-        rb = GetComponent<Rigidbody2D>();
-    }
 
     void Start()
     {
-        // Encontra o GameObject do jogador pela sua Tag e guarda a referência do seu Transform.
-        // É melhor fazer isso no Start do que no Update para economizar processamento.
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
             playerTarget = player.transform;
         }
     }
-    
-    void FixedUpdate()
+
+    void Update()
     {
         if (playerTarget == null) return;
 
-        float distanceToPlayer = Vector2.Distance(transform.position, playerTarget.position);
-       
-        transform.position = Vector2.MoveTowards(
-            transform.position,
-            playerTarget.position,
-            moveSpeed * Time.fixedDeltaTime
-        );
-        
+        float step = moveSpeed * Time.deltaTime;
+        transform.position = Vector2.MoveTowards(transform.position, playerTarget.position, step);
     }
 
-    // Este método é chamado quando outro Collider2D entra no nosso.
-    private void OnCollisionEnter2D(Collision2D collision)
+    // Esta é a única função de dano necessária.
+    // Ela simplesmente "bate na porta" do HealthSystem do jogador.
+    private void OnTriggerStay2D(Collider2D other)
     {
-        // Se colidimos com o jogador...
-        if (collision.gameObject.CompareTag("Player"))
+        if (other.CompareTag("Player"))
         {
-            // ...causamos dano nele.
-            // (Ainda não implementamos, mas a lógica ficaria aqui)
-            // collision.gameObject.GetComponent<HealthSystem>().TakeDamage(10);
-            
-            // Opcional: o inimigo pode se destruir ao colidir
-            // Destroy(gameObject);
+            HealthSystem playerHealth = other.GetComponent<HealthSystem>();
+            if (playerHealth != null)
+            {
+                // Cria o pacote de dano.
+                DamageInfo damagePacket = new DamageInfo(collisionDamage, damageType);
+
+                // Tenta causar dano, passando a identidade do inimigo (gameObject).
+                playerHealth.TakeDamage(damagePacket, gameObject);
+            }
         }
     }
 }

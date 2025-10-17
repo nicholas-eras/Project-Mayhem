@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events; 
 
 public class WaveManager : MonoBehaviour
 {
+    public static UnityAction<string> OnNewWaveStarted;
     // NOVO! Esta classe representa um sub-grupo de inimigos dentro de uma onda.
     [System.Serializable]
     public class EnemyGroup
@@ -29,25 +31,39 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private Transform[] spawnPoints;
 
     private int currentWaveIndex = 0;
-    private bool waveIsRunning = false;
+    // private bool waveIsRunning = false;
+
+    // Tempo extra para esperar as moedas serem coletadas (em segundos)
+    [Header("Configuração de Coleta")]
+    [SerializeField] private float coinCollectionTime = 1.5f;
 
     void Start()
     {
         StartCoroutine(StartNextWave());
     }
 
+    void OnEnable()
+    {
+        // Se inscreve para ouvir quando a loja fechar
+        UpgradeManager.OnShopClosed += HandleShopClosed;
+    }
+
+    void OnDisable()
+    {
+        // Cancela a inscrição
+        UpgradeManager.OnShopClosed -= HandleShopClosed;
+    }
+
     IEnumerator StartNextWave()
     {
         if (currentWaveIndex >= waves.Count)
         {
-            Debug.Log("Todas as ondas completas! VOCÊ VENCEU!");
             yield break;
         }
 
-        waveIsRunning = true;
+        // waveIsRunning = true;
         Wave currentWave = waves[currentWaveIndex];
-        Debug.Log("Iniciando onda: " + currentWave.waveName);
-
+        OnNewWaveStarted?.Invoke(currentWave.waveName);
         // --- NOVA LÓGICA DE SPAWN ---
         // Vamos iniciar uma coroutine para CADA grupo de inimigos.
         // Isso permite que vários grupos surjam em paralelo, cada um com seu próprio timer!
@@ -65,21 +81,47 @@ public class WaveManager : MonoBehaviour
             yield return spawner;
         }
         
-        Debug.Log("Todos os inimigos da onda foram criados. Aguardando derrota...");
-
         // Espera todos os inimigos serem derrotados para avançar
         while (GameObject.FindGameObjectWithTag("Enemy") != null)
         {
             yield return null;
         }
 
-        Debug.Log("Onda " + currentWave.waveName + " completa!");
-        waveIsRunning = false;
-        
-        // AQUI é onde você mostraria a tela de UPGRADES
+        // waveIsRunning = false;
 
+        Coin[] remainingCoins = GameObject.FindObjectsOfType<Coin>();
+        
+        if (remainingCoins.Length > 0)
+        {
+            // 2. Para cada moeda, força a atração
+            foreach (Coin coin in remainingCoins)
+            {
+                coin.ForceAttract();
+            }
+
+            // 3. Espera um tempo fixo para a animação de coleta
+            yield return new WaitForSeconds(coinCollectionTime);
+            
+            // Opcional, mas recomendado: Destrói qualquer moeda que ainda não foi coletada
+            foreach (Coin coin in remainingCoins)
+            {
+                if (coin != null)
+                {
+                    Destroy(coin.gameObject);
+                }
+            }
+        }
+
+        // AQUI é onde você mostraria a tela de UPGRADES
+        // AGORA, EM VEZ DE INICIAR A PRÓXIMA ONDA, NÓS ABRIMOS A LOJA!
+        UpgradeManager.Instance.ShowUpgradeScreen();
+    }
+
+    // Esta função é chamada pelo evento OnShopClosed
+    private void HandleShopClosed()
+    {
         currentWaveIndex++;
-        yield return new WaitForSeconds(3f);
+        // Só agora iniciamos a próxima onda
         StartCoroutine(StartNextWave());
     }
 
