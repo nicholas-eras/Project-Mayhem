@@ -10,18 +10,23 @@ public class UpgradeCardUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI costText;
     [SerializeField] private Button purchaseButton;
 
-    private UpgradeData currentUpgrade;
+    // Mude de [private UpgradeData currentUpgrade;] para:
+    private UpgradeData _currentUpgrade;
+
+    // TORNA A INFORMAÇÃO ACESSÍVEL PARA LEITURA EXTERNA
+    public UpgradeData CurrentUpgrade => _currentUpgrade;
     private UpgradeManager manager;
 
-    public void Setup(UpgradeData upgrade, UpgradeManager upgradeManager)
-    {
-        currentUpgrade = upgrade;
-        manager = upgradeManager;
+    public void Setup(UpgradeData upgrade, UpgradeManager upgradeManager, int dynamicCost)    {
+        _currentUpgrade = upgrade;
+        manager = upgradeManager; 
 
         iconImage.sprite = upgrade.icon;
         nameText.text = upgrade.upgradeName;
         descriptionText.text = upgrade.description;
-        costText.text = "Custo: " + upgrade.cost.ToString();
+        
+        // NOVO: Usa o custo dinâmico passado pelo manager
+        costText.text = "Custo: " + dynamicCost.ToString(); 
 
         // Adiciona o listener ao botão
         purchaseButton.onClick.AddListener(OnPurchase);
@@ -29,6 +34,10 @@ public class UpgradeCardUI : MonoBehaviour
 
     private void OnPurchase()
     {
-        manager.PurchaseUpgrade(currentUpgrade, this);
+        manager.PurchaseUpgrade(_currentUpgrade, this); // <--- CORRIGE o erro de referência na linha 37    }
+    }
+    public void UpdateCostDisplay(int newCost)
+    {
+        costText.text = "Custo: " + newCost.ToString();
     }
 }

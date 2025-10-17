@@ -138,8 +138,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 5
   collisionDamage: 1
-  attackCooldown: 1
+  stopDistance: 0
   damageType: 0
+  isBoss: 0
+  worldHealthBarPrefab: {fileID: 0}
+  healthBarMountPoint: {fileID: 0}
 --- !u!114 &-1563115009402968619
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -153,8 +156,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 1
+  canRegen: 0
+  regenRate: 1
+  regenInterval: 1
   takeDamageSoundName: 
   deathSoundName: SwamerDeath
+  damageCooldown: 1
   OnDeath:
     m_PersistentCalls:
       m_Calls:
@@ -186,4 +193,4 @@ MonoBehaviour:
   - coinPrefab: {fileID: 4904630929564833967, guid: 7a1eff783a0b87d4490b87d633a4b7f6, type: 3}
     dropChance: 1
     minAmount: 1
-    maxAmount: 2
+    maxAmount: 1

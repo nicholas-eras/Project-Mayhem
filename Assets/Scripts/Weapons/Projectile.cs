@@ -2,10 +2,9 @@ using UnityEngine;
 
 public class Projectile : MonoBehaviour
 {
-    [SerializeField] private float speed = 20f;
-    [SerializeField] private float lifetime = 2f;
-    
-    // O dano agora é uma variável privada, definida pela arma.
+    // Tornar todas as variáveis privadas.
+    private float speed = 20f;     // Valor padrão (se não configurado)
+    private float lifetime = 2f;   // Valor padrão (se não configurado)
     private float damageAmount; 
 
     private Rigidbody2D rb;
@@ -14,41 +13,70 @@ public class Projectile : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
     }
-
-    void Start()
-    {
-        rb.velocity = transform.right * speed;
-        Destroy(gameObject, lifetime);
-    }
     
-    // NOVA FUNÇÃO: A arma chama esta função para definir o dano.
+    // FUNÇÃO USADA PELO PLAYER (WeaponController/AutoShooter)
     public void SetDamage(float damage)
     {
         damageAmount = damage;
     }
 
-    // FUNÇÃO ATUALIZADA
+    // FUNÇÃO USADA PELO INIMIGO (EnemyShooter)
+    // Para configurar TODOS os atributos de uma vez
+    public void Configure(float damage, float spd, float lt)
+    {
+        damageAmount = damage;
+        speed = spd;
+        lifetime = lt;
+    }
+
+    void Start()
+    {
+        // Se for o projétil do Inimigo (usou Configure), usaremos os valores setados.
+        // Se for o projétil do Player (usou SetDamage), usaremos os valores padrão (speed, lifetime)
+        // e o dano setado.
+        
+        if (rb != null)
+        {
+            rb.velocity = transform.right * speed;
+        }
+
+        // Destruição programada
+        Destroy(gameObject, lifetime);
+    }
+
+    // ... (restante da função OnTriggerEnter2D) ...
     void OnTriggerEnter2D(Collider2D other)
     {
+        // Lógica para projéteis do PLAYER atingindo INIMIGOS
         if (other.CompareTag("Enemy"))
         {
             HealthSystem enemyHealth = other.GetComponent<HealthSystem>();
             if (enemyHealth != null)
             {
-                // 1. Cria o pacote de dano com o valor que recebemos da arma.
+                // Causa dano em inimigos
                 DamageInfo damagePacket = new DamageInfo(damageAmount, DamageType.Standard);
-
-                // 2. Chama a função TakeDamage. Como é um projétil, não passamos
-                //    o segundo parâmetro (damageSource), então nenhum cooldown será aplicado ao inimigo.
                 enemyHealth.TakeDamage(damagePacket);
                 
                 Destroy(gameObject);
-
+                return;
+            }
+        }
+        // Lógica para projéteis do INIMIGO atingindo o PLAYER
+        else if (other.CompareTag("Player"))
+        {
+             HealthSystem playerHealth = other.GetComponent<HealthSystem>();
+            if (playerHealth != null)
+            {
+                // Causa dano no jogador
+                DamageInfo damagePacket = new DamageInfo(damageAmount, DamageType.Standard); 
+                playerHealth.TakeDamage(damagePacket); 
+                
+                Destroy(gameObject);
+                return;
             }
         }
         
-        // Se o objeto que atingimos não for um trigger (como uma parede), o projétil se destrói.
-        // Isso evita que ele seja destruído por triggers como a área de coleta de moedas.
+        // Se o objeto que atingimos não for um trigger (como uma parede ou cenário sólido), o projétil se destrói.
         if (!other.isTrigger)
         {
             Destroy(gameObject);

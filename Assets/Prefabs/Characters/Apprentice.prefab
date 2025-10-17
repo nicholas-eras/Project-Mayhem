@@ -169,7 +169,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 19ccf62369f4bdc49a70811d1b19c9fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 5
+  baseMoveSpeed: 5
+  healthSystem: {fileID: 0}
 --- !u!114 &198354150599895136
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -232,6 +233,7 @@ MonoBehaviour:
   weaponHolder: {fileID: 417133968}
   weaponPrefabsForTesting:
   - {fileID: 4156104687730460143, guid: 8ce34cdc240a0614c9ea837616d37421, type: 3}
+  startingWeaponPrefab: {fileID: 4156104687730460143, guid: 8ce34cdc240a0614c9ea837616d37421, type: 3}
 --- !u!114 &170300934
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -9,20 +9,23 @@ public class HealthSystem : MonoBehaviour
     [SerializeField] private float maxHealth = 100f;
     private float currentHealth;
     public float CurrentHealth { get { return currentHealth; } }
-    public float MaxHealth { get { return maxHealth; } }
+    
+    // MaxHealth agora é settable (propriedade)
+    public float MaxHealth { get { return maxHealth; } set { maxHealth = value; } }
 
-    // --- NOVO --- Configurações de Regeneração
+    // --- Configurações de Regeneração ---
     [Header("Regeneração (Apenas Player)")]
     [SerializeField] private bool canRegen = false;
-    [SerializeField] private float regenRate = 1f; // Vida restaurada por tick
-    [SerializeField] private float regenInterval = 1f; // Tempo entre ticks
+    public float regenRate = 1f;        // Vida restaurada por tick (Setável pelo UpgradeManager)
+    public float regenInterval = 1f;    // Tempo entre ticks (Setável pelo UpgradeManager)
 
+    // --- Configurações de Áudio ---
     [Header("Audio")]
-    [SerializeField] private string takeDamageSoundName;
-    [SerializeField] private string deathSoundName;
+    [SerializeField] private string takeDamageSoundName; // <-- CORREÇÃO: ADICIONADO
+    [SerializeField] private string deathSoundName;      // <-- CORREÇÃO: ADICIONADO
 
     [Header("Cooldown de Dano por Fonte")]
-    [Tooltip("Por quanto tempo uma fonte de dano específica não pode causar dano novamente.")]
+    [Tooltip("Por quanto tempo uma fonte de dano não pode causar dano novamente. Este é o tempo de invulnerabilidade do Player.")]
     [SerializeField] private float damageCooldown = 1f;
 
     // A nossa "lista negra" de atacantes em cooldown.
@@ -35,22 +38,19 @@ public class HealthSystem : MonoBehaviour
     
     void Awake()
     {
-        currentHealth = maxHealth;
+        currentHealth = MaxHealth; // Usa a propriedade
     }
 
     void Start()
     {
-        // Verifica se o objeto tem a Tag "Player" ou está na Layer "Player"
-        // (A Tag é a forma mais comum de identificar o jogador)
         if (gameObject.CompareTag("Player"))
         {
             isPlayer = true;
             canRegen = true;
         }
 
-        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        OnHealthChanged?.Invoke(currentHealth, MaxHealth);
 
-        // Se for o Player, inicia as lógicas específicas (Regen e Cura por Onda)
         if (isPlayer)
         {
             if (canRegen)
@@ -61,88 +61,89 @@ public class HealthSystem : MonoBehaviour
             UpgradeManager.OnShopClosed += FullHealthRegen;
         }
 
-        // NOVA LÓGICA DE CHEFE:
-        // Tenta encontrar o EnemyController neste mesmo objeto.
+        // Tenta encontrar o EnemyController (lógica de chefe/barra de vida)
         EnemyController controller = GetComponent<EnemyController>();
         if (controller != null && controller.isBoss)
         {
-            // Se for um chefe, chama a função para criar a barra de vida.
             SetupBossHealthBar(controller);
         }
     }
 
-    // --- NOVO --- Rotina de Regeneração
+    // Rotina de Regeneração
     private IEnumerator RegenRoutine()
     {
         while (true) // Loop infinito enquanto o objeto existir
         {
             yield return new WaitForSeconds(regenInterval);
 
-            if (currentHealth < maxHealth)
+            if (currentHealth < MaxHealth)
             {
                 currentHealth += regenRate;
-                currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
-                OnHealthChanged?.Invoke(currentHealth, maxHealth);
+                currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);
+                OnHealthChanged?.Invoke(currentHealth, MaxHealth);
             }
         }
     }
     
-    // --- NOVO --- Cura Total no Início da Onda
+    // Cura Total no Início da Onda
     public void FullHealthRegen()
     {
-        currentHealth = maxHealth;
-        OnHealthChanged?.Invoke(currentHealth, maxHealth);
-        // Opcional: Adicionar um efeito visual/sonoro de cura total.
+        currentHealth = MaxHealth;
+        OnHealthChanged?.Invoke(currentHealth, MaxHealth);
+    }
+    
+    // Função de cura genérica
+    public void Heal(int amount)
+    {
+        currentHealth += amount;
+        currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);
+        OnHealthChanged?.Invoke(currentHealth, MaxHealth);
     }
 
-    // NOVA FUNÇÃO
+    // Configuração de barra de vida de chefe (assumindo a existência de EnemyController)
     private void SetupBossHealthBar(EnemyController controller)
     {
-        // Verificações de segurança
         if (controller.worldHealthBarPrefab == null || controller.healthBarMountPoint == null)
         {
             Debug.LogError("Configuração da barra de vida do chefe está incompleta para: " + name);
             return;
         }
 
-        // 1. Cria a instância da barra de vida.
         GameObject barInstance = Instantiate(controller.worldHealthBarPrefab, controller.healthBarMountPoint);
-
-        // 2. Encontra o script WorldHealthBar dentro da instância.
         WorldHealthBar healthBar = barInstance.GetComponentInChildren<WorldHealthBar>();
         
-        // 3. "Inscreve" a função de atualização da barra no evento OnHealthChanged DESTE HealthSystem.
         if (healthBar != null)
         {
-            OnHealthChanged += healthBar.UpdateHealth;
+            // Note: Requer que WorldHealthBar tenha um método UpdateHealth(float current, float max)
+            // Assumindo que você tem o script WorldHealthBar
+            OnHealthChanged += healthBar.UpdateHealth; 
         }
     }
 
-    // A função principal que age como nosso "porteiro".
+    // A função principal que aplica dano.
     public void TakeDamage(DamageInfo info, GameObject damageSource = null)
     {
-        // Se não houver uma fonte de dano, o dano sempre é aplicado (ex: projéteis).
-        // Se houver uma fonte, verificamos se ela está na lista negra.
+        // Verifica se a fonte de dano está em cooldown (Invulnerabilidade ativa)
         if (damageSource != null && sourcesOnCooldown.Contains(damageSource))
         {
-            // Se estiver na lista, o dano é bloqueado e a função termina aqui.
             return;
         }
 
         if (currentHealth <= 0) return;
 
-        // Se o dano foi aceito, tocamos o som.
-        if (!string.IsNullOrEmpty(takeDamageSoundName))
+        // Toca o som de dano
+        if (!string.IsNullOrEmpty(takeDamageSoundName)) // <-- CORRIGIDO: Variável existe
         {
-            AudioManager.Instance.PlaySFX(takeDamageSoundName);
+            // Assumindo que AudioManager.Instance é global
+            AudioManager.Instance.PlaySFX(takeDamageSoundName); // <-- REMOVA O COMENTÁRIO SE FOR USAR
         }
 
         // Aplicamos o dano e atualizamos a UI.
         currentHealth -= info.damageAmount;
-        currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
-        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);
+        OnHealthChanged?.Invoke(currentHealth, MaxHealth);
 
-        // Se uma fonte de dano foi fornecida, iniciamos seu cooldown.
+        // Se uma fonte de dano foi fornecida, iniciamos seu cooldown (invulnerabilidade).
         if (damageSource != null)
         {
             StartCoroutine(AddSourceToCooldown(damageSource));
@@ -155,7 +156,7 @@ public class HealthSystem : MonoBehaviour
         }
     }
 
-    // A coroutine que gerencia a lista negra.
+    // A coroutine que gerencia o cooldown.
     private IEnumerator AddSourceToCooldown(GameObject source)
     {
         sourcesOnCooldown.Add(source); // Adiciona o atacante à lista.
@@ -166,10 +167,38 @@ public class HealthSystem : MonoBehaviour
     private void Die()
     {
         OnDeath?.Invoke();
-        if (!string.IsNullOrEmpty(deathSoundName))
+        if (!string.IsNullOrEmpty(deathSoundName)) // <-- CORRIGIDO: Variável existe
         {
-            AudioManager.Instance.PlaySFX(deathSoundName);
+            AudioManager.Instance.PlaySFX(deathSoundName); // <-- REMOVA O COMENTÁRIO SE FOR USAR
         }
         Destroy(gameObject);
+    }
+    
+    // ========================================================
+    // FUNÇÕES DE UPGRADE CHAMADAS PELO UPGRADEMANAGER
+    // ========================================================
+
+    // 1. AUMENTO DO TEMPO DE INVULNERABILIDADE (DAMAGE COOLDOWN)
+    public void IncreaseInvulnerabilityTime(float timeIncrease)
+    {
+        damageCooldown += timeIncrease;
+        Debug.Log("Tempo de Invulnerabilidade aumentado! Novo Cooldown: " + damageCooldown + "s");
+    }
+
+    // 2. AUMENTO DA VIDA MÁXIMA
+    public void IncreaseMaxHealth(float percentage)
+    {
+        float maxHealthIncrease = MaxHealth + percentage;
+        MaxHealth = Mathf.RoundToInt(maxHealthIncrease); 
+        Heal(Mathf.RoundToInt(maxHealthIncrease)); // Cura o novo HP
+        
+        OnHealthChanged?.Invoke(currentHealth, MaxHealth);
+    }
+    
+    // 3. AUMENTO DA REGENERAÇÃO
+    public void IncreaseRegenRate(float percentage)
+    {
+        regenRate += percentage;
+        Debug.Log("Regeneração por Tick aumentada! Novo Rate: " + regenRate);
     }
 }

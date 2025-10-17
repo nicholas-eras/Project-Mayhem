@@ -18,6 +18,18 @@ public class PlayerWeaponManager : MonoBehaviour
     public List<GameObject> weaponPrefabsForTesting;
     private int testWeaponIndex = 0;
 
+    [Header("Configuração")]
+    [Tooltip("O prefab da arma que o jogador começa o jogo. (Ex: Pistol)")]
+    [SerializeField] private GameObject startingWeaponPrefab; // <-- NOVO CAMPO
+
+    void Start()
+    {
+        if (startingWeaponPrefab != null)
+        {
+            AddWeapon(startingWeaponPrefab);
+        }
+    }
+
     void Update()
     {
         // DEBUG: Pressione "espaço" para adicionar uma nova arma para teste.
@@ -26,21 +38,32 @@ public class PlayerWeaponManager : MonoBehaviour
             AddTestWeapon();
         }
     }
-    
+
     public void AddWeapon(GameObject weaponPrefab)
     {
         if (weaponHolder == null) return;
 
-        // Cria a nova arma e a torna filha do "suporte" de armas.
+        // 1. Cria a nova arma
         GameObject newWeapon = Instantiate(weaponPrefab, weaponHolder.position, Quaternion.identity);
         newWeapon.transform.SetParent(weaponHolder);
 
-        equippedWeapons.Add(newWeapon);
+        // 2. OBTÉM O WeaponController
+        WeaponController weaponController = newWeapon.GetComponent<WeaponController>();
 
-        // Reorganiza TODAS as armas em um círculo estático.
+        if (weaponController != null && weaponController.weaponData != null)
+        {
+            // 3. CRUCIAL: CLONAR O ScriptableObject
+            // Cria uma cópia temporária do Asset para que as alterações não sejam permanentes.
+            // Assumimos que WeaponData herda de ScriptableObject.
+            WeaponData originalData = weaponController.weaponData;
+            WeaponData clonedData = Instantiate(originalData);
+            weaponController.weaponData = clonedData;
+        }
+
+        equippedWeapons.Add(newWeapon);
         RearrangeWeapons();
     }
-
+    
     private void RearrangeWeapons()
     {
         int weaponCount = equippedWeapons.Count;
@@ -65,8 +88,70 @@ public class PlayerWeaponManager : MonoBehaviour
     private void AddTestWeapon()
     {
         if (weaponPrefabsForTesting.Count == 0) return;
-        
+
         AddWeapon(weaponPrefabsForTesting[testWeaponIndex]);
         testWeaponIndex = (testWeaponIndex + 1) % weaponPrefabsForTesting.Count;
+    }
+    
+    // 1. AUMENTO DE DANO
+    public void IncreaseDamageMultiplier(float percentage)
+    {
+        // O valor 'percentage' é o multiplicador de aumento (ex: 0.1 para 10%).
+        float multiplier = 1f + percentage; 
+
+        foreach (GameObject weaponGO in equippedWeapons)
+        {
+            // Tenta obter o WeaponController.
+            WeaponController weapon = weaponGO.GetComponent<WeaponController>();
+            
+            if (weapon != null && weapon.weaponData != null)
+            {
+                // Aplica o multiplicador ao campo 'damage' do WeaponData (que deve ser a cópia clonada).
+                weapon.weaponData.damage *= multiplier;                
+            }
+        }
+    }
+    
+    // 2. AUMENTO DE CADÊNCIA (Fire Rate)
+    public void IncreaseFireRateMultiplier(float percentage)
+    {
+        // Aumentar o FireRate em 50% significa aumentar o multiplicador em 1.5.
+        // O ideal é que o upgrade seja aditivo ou que o valor base da arma seja o ponto de partida.
+        
+        // COMO CORRIGIR O PROBLEMA DE MULTIPLICAÇÃO EXAGERADA:
+        float multiplier = 1f + percentage; // Ex: 1.15 para 15%
+
+        foreach (GameObject weaponGO in equippedWeapons)
+        {
+            WeaponController weapon = weaponGO.GetComponent<WeaponController>();
+            if (weapon != null && weapon.weaponData != null)
+            {
+                // O código original estava correto para aumentar uma frequência, mas causa o exagero.
+                // Para consertar o exagero, vamos aplicar a mudança de forma mais controlada.
+                
+                // Se você quer que o upgrade seja ADITIVO (e não cumulativo no código):
+                // Esta solução exige que você tenha o valor base em algum lugar.
+                
+                // Solução Padrão: Multiplicar (e aceitar que o aumento é grande se o base for alto)
+                // weapon.weaponData.fireRate *= multiplier; 
+
+                // OU, a solução mais limpa: Se você quer que o efeito pareça ADITIVO (ex: +4 Fire Rate):
+                weapon.weaponData.fireRate += percentage; // Se percentage for 1 (100%)                
+            }
+        }
+    }
+    
+    // 3. AUMENTO DE ALCANCE
+    public void IncreaseRangeMultiplier(float percentage)
+    {
+        foreach (GameObject weaponGO in equippedWeapons)
+        {
+            WeaponController weapon = weaponGO.GetComponent<WeaponController>();
+            if (weapon != null && weapon.weaponData != null)
+            {
+                weapon.weaponData.range += percentage;
+                Debug.Log($"Alcance da {weapon.weaponData.weaponName} aumentado para: {weapon.weaponData.range}");
+            }
+        }
     }
 }

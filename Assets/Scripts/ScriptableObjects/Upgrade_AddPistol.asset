@@ -16,6 +16,7 @@ MonoBehaviour:
   upgradeName: +1 Pistola
   description: Adiciona mais uma pistola ao seu arsenal.
   icon: {fileID: 21300000, guid: 41c5396add97f0f4197f40c74c4bf4e8, type: 3}
-  cost: 50
+  baseCost: 50
+  priceIncreasePerLevel: 0.3
   weaponPrefab: {fileID: 4156104687730460143, guid: 8ce34cdc240a0614c9ea837616d37421, type: 3}
   value: 50
