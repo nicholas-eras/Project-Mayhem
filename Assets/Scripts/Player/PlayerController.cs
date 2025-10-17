@@ -8,7 +8,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float baseMoveSpeed = 5f;
 
     // A velocidade atual que é usada no FixedUpdate
-    private float currentMoveSpeed;
+    public float currentMoveSpeed;
     private Rigidbody2D rb;
     private Vector2 moveInput;
     [HideInInspector] public HealthSystem healthSystem;

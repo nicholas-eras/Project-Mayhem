@@ -1,77 +1,53 @@
+// UIManager.cs
 using UnityEngine;
-using UnityEngine.UI; // Necessário para o Slider
-using TMPro; // Necessário para o TextMeshPro
+using UnityEngine.UI;
+using TMPro;
 
 public class UIManager : MonoBehaviour
 {
-    [Header("Referências da UI")]
+    [Header("UI References")]
     [SerializeField] private Slider healthBar;
     [SerializeField] private TextMeshProUGUI coinCounterText;
+    [SerializeField] private TextMeshProUGUI waveCounterText;
+    [SerializeField] private TextMeshProUGUI healthText;
 
-    [Header("Referências do Jogador")]
+    [Header("Player References")]
     [SerializeField] private HealthSystem playerHealth;
-    [SerializeField] private TextMeshProUGUI healthText; // <<<--- NOVA LINHA
 
-    [SerializeField] private TextMeshProUGUI waveCounterText; // <<<--- NOVA LINHA
+    // This will hold the specific instance of WaveManager for this scene.
+    private WaveManager currentWaveManager;
 
-    void Start()
+    public void Initialize(WaveManager waveManager)
     {
-        // Força uma atualização inicial da UI assim que o jogo começa,
-        // usando os dados que pegamos diretamente do HealthSystem.
-        if (playerHealth != null)
+        this.currentWaveManager = waveManager;
+        if (this.currentWaveManager != null)
         {
-            UpdateHealthBar(playerHealth.CurrentHealth, playerHealth.MaxHealth);
+            this.currentWaveManager.OnNewWaveStarted += UpdateWaveCounter;
         }
     }
-
-    // OnEnable é chamado quando o objeto é ativado
+    
     void OnEnable()
     {
-        // Se inscreve para ouvir os avisos
         if (playerHealth != null)
         {
             playerHealth.OnHealthChanged += UpdateHealthBar;
         }
+        // Assuming PlayerWallet is still static. If not, it needs the same treatment.
         PlayerWallet.OnMoneyChanged += UpdateCoinCounter;
-        WaveManager.OnNewWaveStarted += UpdateWaveCounter;
     }
 
-    // OnDisable é chamado quando o objeto é desativado
     void OnDisable()
     {
-        // Cancela a inscrição para evitar erros
         if (playerHealth != null)
         {
             playerHealth.OnHealthChanged -= UpdateHealthBar;
         }
         PlayerWallet.OnMoneyChanged -= UpdateCoinCounter;
-        WaveManager.OnNewWaveStarted -= UpdateWaveCounter;
-    }
 
-    // --- FUNÇÃO ATUALIZADA ---
-    private void UpdateHealthBar(float currentHealth, float maxHealth)
-    {
-        // Atualiza a barra de preenchimento (Slider)
-        if (healthBar != null)
+        // We also need to unsubscribe from the WaveManager event.
+        if (this.currentWaveManager != null)
         {
-            healthBar.value = currentHealth / maxHealth;
-        }
-
-        // Atualiza o texto com os valores numéricos
-        if (healthText != null)
-        {
-            // Mathf.Ceil arredonda o número para cima, para evitar "99.5" de vida.
-            // .ToString() converte o número para texto.
-            healthText.text = Mathf.Ceil(currentHealth).ToString() + " / " + Mathf.Ceil(maxHealth).ToString();
-        }
-    }
-
-    // Esta função é chamada pelo evento OnMoneyChanged
-    private void UpdateCoinCounter(int newTotal)
-    {
-        if (coinCounterText != null)
-        {
-            coinCounterText.text = "Moedas: " + newTotal.ToString();
+            this.currentWaveManager.OnNewWaveStarted -= UpdateWaveCounter;
         }
     }
 
@@ -79,8 +55,29 @@ public class UIManager : MonoBehaviour
     {
         if (waveCounterText != null)
         {
-            // Formata o texto para ficar mais bonito, ex: "Onda: 1"
-            waveCounterText.text = "Onda: " + waveName;
+            waveCounterText.text = waveName;
+        }
+    }
+
+    // --- No other changes are needed below this line ---
+
+    private void UpdateHealthBar(float currentHealth, float maxHealth)
+    {
+        if (healthBar != null)
+        {
+            healthBar.value = currentHealth / maxHealth;
+        }
+        if (healthText != null)
+        {
+            healthText.text = Mathf.Ceil(currentHealth).ToString() + " / " + Mathf.Ceil(maxHealth).ToString();
+        }
+    }
+
+    private void UpdateCoinCounter(int newTotal)
+    {
+        if (coinCounterText != null)
+        {
+            coinCounterText.text = "Moedas: " + newTotal.ToString();
         }
     }
 }

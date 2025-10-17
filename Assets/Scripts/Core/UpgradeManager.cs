@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
-using System.Linq;
 
 public class UpgradeManager : MonoBehaviour
 {
-    public static UpgradeManager Instance;
+    // --- FIX 1: ADD THE STATIC INSTANCE PROPERTY ---
+    // This property will hold the single instance of the UpgradeManager.
+    public static UpgradeManager Instance { get; private set; }
 
     [Header("Referências")]
     [SerializeField] private GameObject upgradePanel;
@@ -21,113 +22,118 @@ public class UpgradeManager : MonoBehaviour
     [SerializeField] private List<UpgradeData> allUpgrades;
     [SerializeField] private int optionsToShow = 4;
 
-    // Evento para avisar ao WaveManager que a loja fechou e o jogo pode continuar.
-    public static UnityAction OnShopClosed;
+    public event UnityAction OnShopClosed;
 
     private Dictionary<UpgradeType, int> upgradeLevels = new Dictionary<UpgradeType, int>();
-    
-    void Awake()
+
+    [SerializeField] private PlayerStatusUI playerStatusUI; 
+
+    // --- FIX 2: ADD THE AWAKE METHOD FOR SINGLETON LOGIC ---
+    // This method runs before any Start() methods and ensures
+    // that 'Instance' is set correctly.
+    private void Awake()
     {
-        Instance = this;
+        // Standard singleton pattern to ensure only one instance exists.
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            Instance = this;
+        }
     }
 
     public void ShowUpgradeScreen()
     {
-        // Pausa o jogo
         Time.timeScale = 0f;
         upgradePanel.SetActive(true);
 
-        // Limpa as cartas antigas
         foreach (Transform child in cardContainer)
         {
             Destroy(child.gameObject);
         }
 
-        // --- NOVA LÓGICA DE ESCOLHA ---
         List<UpgradeData> upgradesPool = new List<UpgradeData>(allUpgrades);
-
-        if (upgradesPool.Count == 0) return; // Nenhuma opção disponível.
+        if (upgradesPool.Count == 0) return;
 
         List<UpgradeData> chosenUpgrades = new List<UpgradeData>();
-
-        // Se o número de upgrades for menor que o que queremos mostrar, repetimos.
         for (int i = 0; i < optionsToShow; i++)
         {
-            // Garante que a lista não está vazia (nunca deve estar se o count > 0)
             if (upgradesPool.Count > 0)
             {
-                // Escolhe um upgrade aleatório do pool (sem remover para permitir repetição)
                 UpgradeData randomUpgrade = upgradesPool[Random.Range(0, upgradesPool.Count)];
                 chosenUpgrades.Add(randomUpgrade);
             }
             else
             {
-                // Caso de falha (embora improvável com esta lógica)
                 break;
             }
         }
-        // --- FIM DA NOVA LÓGICA DE ESCOLHA ---
-        // Cria as novas cartas
+
         foreach (var upgrade in chosenUpgrades)
         {
-            int dynamicCost = GetCurrentCost(upgrade); // <--- Calcula o custo
-            
+            int dynamicCost = GetCurrentCost(upgrade);
             GameObject cardInstance = Instantiate(upgradeCardPrefab, cardContainer);
-            
-            // NOVO: Você precisará de uma nova função Setup para passar o custo, 
-            // OU apenas atualizar a função Setup existente no UpgradeCardUI para chamar GetCurrentCost.
-            
             UpgradeCardUI cardUI = cardInstance.GetComponent<UpgradeCardUI>();
-            cardUI.Setup(upgrade, this, dynamicCost); // <--- Chama o Setup com o novo custo
+            if (cardUI != null)
+            {
+                cardUI.Setup(upgrade, this, dynamicCost);
+            }
+        }
+
+        // NOVO: Configura e atualiza o painel de status do jogador
+        if (playerStatusUI != null)
+        {
+            playerStatusUI.Setup(playerController, playerHealthSystem, playerWeaponManager);
         }
     }
 
     public void PurchaseUpgrade(UpgradeData upgrade, UpgradeCardUI cardUI)
     {
-        int requiredCost = GetCurrentCost(upgrade); // <--- Usa o custo dinâmico!
+        int requiredCost = GetCurrentCost(upgrade);
 
-        // Tenta gastar o dinheiro
-        if (playerWallet.SpendMoney(requiredCost)) // <--- Usa o custo dinâmico!
+        if (playerWallet.SpendMoney(requiredCost))
         {
-            // 1. Aplica o upgrade
             ApplyUpgrade(upgrade);
-
-            // 2. CRUCIAL: Aumenta o nível para o próximo cálculo de custo
-            upgradeLevels[upgrade.type]++;
-            UpdateAllVisibleCardCosts(upgrade.type);
             
+            if (!upgradeLevels.ContainsKey(upgrade.type))
+            {
+                upgradeLevels.Add(upgrade.type, 0);
+            }
+            upgradeLevels[upgrade.type]++;
+            
+            // NOVO: Atualiza o painel de status após aplicar o upgrade
+            if (playerStatusUI != null)
+            {
+                playerStatusUI.UpdateDisplay();
+            }
+            
+            UpdateAllVisibleCardCosts(upgrade.type);
             Destroy(cardUI.gameObject);
         }
         else
         {
-            // Feedback de que não tem dinheiro (som, etc.)
             Debug.Log("Dinheiro insuficiente! Custo: " + requiredCost);
         }
     }
-    
+
     public int GetCurrentCost(UpgradeData upgrade)
     {
-        // 1. Obtém o nível atual (ou 0 se for a primeira vez)
         if (!upgradeLevels.ContainsKey(upgrade.type))
         {
             upgradeLevels.Add(upgrade.type, 0);
         }
         int currentLevel = upgradeLevels[upgrade.type];
-
-        // 2. Calcula o custo progressivo
-        // Custo = CustoBase * (1 + (AumentoPorNível * NívelAtual))
         float costMultiplier = 1f + (upgrade.priceIncreasePerLevel * currentLevel);
-        
-        // Arredonda para o inteiro mais próximo
         return Mathf.RoundToInt(upgrade.baseCost * costMultiplier);
     }
 
     private void ApplyUpgrade(UpgradeData upgrade)
     {
-        // Verificações de segurança
         if (playerHealthSystem == null || playerController == null || playerWeaponManager == null)
         {
-            Debug.LogError("Referências de Stats/Health/Weapons incompletas no UpgradeManager! Verifique o Inspector.");
+            Debug.LogError("Referências de Player/Health/Weapons incompletas no UpgradeManager! Verifique o Inspector.");
             return;
         }
 
@@ -173,29 +179,22 @@ public class UpgradeManager : MonoBehaviour
                 break;
         }
     }
-
-    // Função para o botão "Pular"
+    
     public void CloseShop()
     {
-        Time.timeScale = 1f; // Despausa o jogo
+        Time.timeScale = 1f;
         upgradePanel.SetActive(false);
-        OnShopClosed?.Invoke(); // Avisa que o jogo pode continuar
+        OnShopClosed?.Invoke();
     }
 
     private void UpdateAllVisibleCardCosts(UpgradeType purchasedType)
     {
         UpgradeCardUI[] activeCards = cardContainer.GetComponentsInChildren<UpgradeCardUI>();
-
         foreach (UpgradeCardUI card in activeCards)
         {
-            // CORREÇÃO: Acessa a informação de upgrade via a nova propriedade pública 'CurrentUpgrade'
-            // Isso corrige os erros CS1061 na linha 194 e 197.
-            if (card.CurrentUpgrade.type == purchasedType)
+            if (card.CurrentUpgrade != null && card.CurrentUpgrade.type == purchasedType)
             {
-                // 1. Recalcula o novo custo para este upgrade.
-                int newCost = GetCurrentCost(card.CurrentUpgrade); 
-
-                // 2. Atualiza o display da carta.
+                int newCost = GetCurrentCost(card.CurrentUpgrade);
                 card.UpdateCostDisplay(newCost);
             }
         }

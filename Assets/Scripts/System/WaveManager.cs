@@ -1,12 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Events; 
 
 public class WaveManager : MonoBehaviour
 {
-    public static UnityAction<string> OnNewWaveStarted;
-    // NOVO! Esta classe representa um sub-grupo de inimigos dentro de uma onda.
+    // FIX 1: DECLARE THE MISSING EVENT
+    // Other scripts (like a UIManager) can listen to this to update the wave display.
+    public event System.Action<string> OnNewWaveStarted;
+
     [System.Serializable]
     public class EnemyGroup
     {
@@ -16,7 +17,6 @@ public class WaveManager : MonoBehaviour
         public float initialDelay; // Um atraso opcional antes que este grupo comece a surgir
     }
 
-    // A classe Wave agora usa uma lista de EnemyGroups em vez de uma lista de prefabs.
     [System.Serializable]
     public class Wave
     {
@@ -30,47 +30,66 @@ public class WaveManager : MonoBehaviour
     [Header("Referências")]
     [SerializeField] private Transform[] spawnPoints;
 
-    private int currentWaveIndex = 0;
-    // private bool waveIsRunning = false;
-
-    // Tempo extra para esperar as moedas serem coletadas (em segundos)
     [Header("Configuração de Coleta")]
     [SerializeField] private float coinCollectionTime = 1.5f;
 
+    private int currentWaveIndex = 0;
+
     void Start()
     {
+        // A verificação de segurança já está boa aqui.
+        if (UpgradeManager.Instance == null)
+        {
+            Debug.LogError("UpgradeManager não encontrado. A funcionalidade de Shop/Next Wave falhará.");
+        }
+        // Inicia a primeira onda.
         StartCoroutine(StartNextWave());
     }
 
     void OnEnable()
     {
-        // Se inscreve para ouvir quando a loja fechar
-        UpgradeManager.OnShopClosed += HandleShopClosed;
+        // FIX 2: CORRECT EVENT SUBSCRIPTION
+        // Subscribe to the event using the singleton 'Instance'.
+        if (UpgradeManager.Instance != null)
+        {
+            UpgradeManager.Instance.OnShopClosed += HandleShopClosed;
+        }
     }
 
     void OnDisable()
     {
-        // Cancela a inscrição
-        UpgradeManager.OnShopClosed -= HandleShopClosed;
+        // FIX 2: CORRECT EVENT UNSUBSCRIPTION
+        // Unsubscribe using the same singleton 'Instance' to prevent memory leaks.
+        if (UpgradeManager.Instance != null)
+        {
+            UpgradeManager.Instance.OnShopClosed -= HandleShopClosed;
+        }
+        StopAllCoroutines();
     }
 
     IEnumerator StartNextWave()
     {
+        // 1. CHECAGEM DE FIM DE JOGO
         if (currentWaveIndex >= waves.Count)
         {
-            yield break;
+            Debug.Log("Fim de Jogo! Todas as ondas completadas.");
+            
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.GameOver(); // Chama o método que retorna ao Menu/Seleção
+            }
+            yield break; // Termina a corrotina
         }
 
-        // waveIsRunning = true;
         Wave currentWave = waves[currentWaveIndex];
+        
+        // This now works because the event is declared.
         OnNewWaveStarted?.Invoke(currentWave.waveName);
-        // --- NOVA LÓGICA DE SPAWN ---
-        // Vamos iniciar uma coroutine para CADA grupo de inimigos.
-        // Isso permite que vários grupos surjam em paralelo, cada um com seu próprio timer!
+        
+        // --- Lógica de Spawn ---
         List<Coroutine> runningSpawners = new List<Coroutine>();
         foreach (var group in currentWave.enemyGroups)
         {
-            // Inicia a coroutine de spawn para o grupo e guarda uma referência a ela.
             Coroutine spawner = StartCoroutine(SpawnEnemyGroup(group));
             runningSpawners.Add(spawner);
         }
@@ -81,29 +100,27 @@ public class WaveManager : MonoBehaviour
             yield return spawner;
         }
         
-        // Espera todos os inimigos serem derrotados para avançar
+        // Espera todos os inimigos serem derrotados
         while (GameObject.FindGameObjectWithTag("Enemy") != null)
         {
             yield return null;
         }
 
-        // waveIsRunning = false;
-
-        Coin[] remainingCoins = GameObject.FindObjectsOfType<Coin>();
+        // --- Lógica de Coleta de Moedas ---
+        Coin[] remainingCoins = FindObjectsOfType<Coin>(); // Changed to FindObjectsOfType for better performance
         
         if (remainingCoins.Length > 0)
         {
-            // 2. Para cada moeda, força a atração
             foreach (Coin coin in remainingCoins)
             {
-                coin.ForceAttract();
+                if (coin != null) coin.ForceAttract();
             }
 
-            // 3. Espera um tempo fixo para a animação de coleta
             yield return new WaitForSeconds(coinCollectionTime);
             
-            // Opcional, mas recomendado: Destrói qualquer moeda que ainda não foi coletada
-            foreach (Coin coin in remainingCoins)
+            // Re-check for coins that might have been collected during the wait
+            Coin[] coinsToDestroy = FindObjectsOfType<Coin>();
+            foreach (Coin coin in coinsToDestroy)
             {
                 if (coin != null)
                 {
@@ -112,29 +129,35 @@ public class WaveManager : MonoBehaviour
             }
         }
 
-        // AQUI é onde você mostraria a tela de UPGRADES
-        // AGORA, EM VEZ DE INICIAR A PRÓXIMA ONDA, NÓS ABRIMOS A LOJA!
-        UpgradeManager.Instance.ShowUpgradeScreen();
+        // 2. CHAMA O SHOP
+        if (UpgradeManager.Instance != null)
+        {
+             UpgradeManager.Instance.ShowUpgradeScreen();
+        }
+        else
+        {
+             Debug.LogError("UpgradeManager.Instance é nulo. Pulando tela de Upgrade.");
+             // Força o avanço para a próxima onda se o Manager estiver faltando
+             HandleShopClosed(); 
+        }
     }
 
     // Esta função é chamada pelo evento OnShopClosed
     private void HandleShopClosed()
     {
         currentWaveIndex++;
-        // Só agora iniciamos a próxima onda
+        // Inicia a próxima onda
         StartCoroutine(StartNextWave());
     }
 
     // Esta coroutine gerencia o spawn de apenas UM grupo de inimigos.
     IEnumerator SpawnEnemyGroup(EnemyGroup group)
     {
-        // Espera o delay inicial, se houver
         if (group.initialDelay > 0)
         {
             yield return new WaitForSeconds(group.initialDelay);
         }
 
-        // Loop para criar os inimigos do grupo
         for (int i = 0; i < group.count; i++)
         {
             SpawnEnemy(group.enemyPrefab);
@@ -148,4 +171,9 @@ public class WaveManager : MonoBehaviour
         Transform randomSpawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
         Instantiate(enemyPrefab, randomSpawnPoint.position, randomSpawnPoint.rotation);
     }
+    
+    // FIX 3: REMOVED UNNECESSARY METHOD
+    // The 'Initialize' method and 'currentUpgradeManager' field were removed.
+    // Relying solely on the singleton pattern (UpgradeManager.Instance) is cleaner,
+    // more reliable, and removes the bugs caused by the mixed approach.
 }

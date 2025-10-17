@@ -31,7 +31,7 @@ Transform:
   m_GameObject: {fileID: 419219122743540495}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -6.787196, y: -1.256416, z: 0}
-  m_LocalScale: {x: 0.05, y: 0.05, z: 1}
+  m_LocalScale: {x: 0.1, y: 0.1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -190,7 +190,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   lootTable:
-  - coinPrefab: {fileID: 1126551906883740576, guid: dbbb70c19dac0944185bea84b6e55a53, type: 3}
+  - coinPrefab: {fileID: 4904630929564833967, guid: 7a1eff783a0b87d4490b87d633a4b7f6, type: 3}
     dropChance: 1
-    minAmount: 1
-    maxAmount: 2
+    minAmount: 3
+    maxAmount: 3

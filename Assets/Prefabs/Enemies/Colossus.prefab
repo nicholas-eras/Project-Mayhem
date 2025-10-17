@@ -139,6 +139,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 4
   collisionDamage: 10
+  stopDistance: 0
   damageType: 0
   isBoss: 1
   worldHealthBarPrefab: {fileID: 6174307659446769484, guid: e41fc0823b419a14795db003a0fb82e9, type: 3}
@@ -193,7 +194,7 @@ MonoBehaviour:
   - coinPrefab: {fileID: 1126551906883740576, guid: dbbb70c19dac0944185bea84b6e55a53, type: 3}
     dropChance: 1
     minAmount: 5
-    maxAmount: 7
+    maxAmount: 5
   - coinPrefab: {fileID: 5275866069380471682, guid: 806a44981e229ab4fad74795bbf93f46, type: 3}
     dropChance: 1
     minAmount: 1

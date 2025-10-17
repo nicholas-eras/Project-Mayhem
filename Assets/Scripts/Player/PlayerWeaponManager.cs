@@ -140,7 +140,7 @@ public class PlayerWeaponManager : MonoBehaviour
             }
         }
     }
-    
+
     // 3. AUMENTO DE ALCANCE
     public void IncreaseRangeMultiplier(float percentage)
     {
@@ -150,8 +150,16 @@ public class PlayerWeaponManager : MonoBehaviour
             if (weapon != null && weapon.weaponData != null)
             {
                 weapon.weaponData.range += percentage;
-                Debug.Log($"Alcance da {weapon.weaponData.weaponName} aumentado para: {weapon.weaponData.range}");
             }
         }
+    }
+    
+    public GameObject GetEquippedWeapon(int index)
+    {
+        if (index >= 0 && index < equippedWeapons.Count)
+        {
+            return equippedWeapons[index];
+        }
+        return null;
     }
 }

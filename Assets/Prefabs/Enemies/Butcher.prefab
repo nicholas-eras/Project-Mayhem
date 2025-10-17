@@ -192,5 +192,5 @@ MonoBehaviour:
   lootTable:
   - coinPrefab: {fileID: 1126551906883740576, guid: dbbb70c19dac0944185bea84b6e55a53, type: 3}
     dropChance: 1
-    minAmount: 3
-    maxAmount: 3
+    minAmount: 1
+    maxAmount: 1

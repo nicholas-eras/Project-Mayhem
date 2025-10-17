@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement; // Importar para escutar eventos de cena
+using System; // Para o System.Serializable
 
 public class AudioManager : MonoBehaviour
 {
@@ -12,38 +14,82 @@ public class AudioManager : MonoBehaviour
     [Header("Biblioteca de Áudio")]
     public List<Sound> soundList;
 
+    private string currentTrackName = string.Empty; // Rastreia a música atual
+    
     void Awake()
     {
+        // 1. Lógica do Singleton Persistente
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            
+            // 2. Se inscreve para o evento de carregamento de cena
+            SceneManager.sceneLoaded += OnSceneLoaded; 
         }
         else
         {
+            // Destrói duplicatas
             Destroy(gameObject);
         }
     }
-
+    
+    void OnDestroy()
+    {
+        // 3. Remove a inscrição quando o objeto é destruído para evitar erros
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+    
+    // Opcional: Inicia a música da primeira cena carregada
     void Start()
     {
-        PlayMusic("Theme"); 
+        // Garante que a primeira cena (geralmente MainMenu ou MapSelect) tenha sua música.
+        // O OnSceneLoaded cuidará disso, mas Start é uma segurança extra.
+        // O nome da trilha deve ser igual ao nome da sua cena inicial.
+        PlayMusic(SceneManager.GetActiveScene().name); 
     }
+
+    // 4. Chamado automaticamente quando uma nova cena é carregada
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Usa o nome da cena (Ex: "Cyberpunk", "MapSelectScene") para buscar a trilha
+        PlayMusic(scene.name);
+    }
+
+    // ========================================================
+    // FUNÇÕES PÚBLICAS DE CONTROLE
+    // ========================================================
 
     public void PlayMusic(string name)
     {
-        Sound sound = FindSound(name);
-        if (sound == null)
+        // 1. Evita tocar a mesma música novamente
+        if (musicSource.isPlaying && currentTrackName == name)
         {
-            Debug.LogWarning("Música: " + name + " não encontrada!");
             return;
         }
         
-        // APLICA OS VALORES DA NOSSA LISTA
+        // 2. Procura o Sound Asset na biblioteca
+        Sound sound = FindSound(name);
+        if (sound == null)
+        {
+            Debug.LogWarning($"Música: '{name}' não encontrada na Sound List. Verifique se o nome da trilha é igual ao nome da cena.");
+            musicSource.Stop(); 
+            currentTrackName = string.Empty;
+            return;
+        }
+        
+        // 3. Para a música anterior
+        musicSource.Stop(); 
+
+        // 4. Inicia a nova música
         musicSource.clip = sound.clip;
-        musicSource.volume = sound.volume; // <<<--- APLICA O VOLUME
-        musicSource.pitch = sound.pitch;   // <<<--- APLICA O PITCH
+        musicSource.volume = sound.volume;
+        musicSource.pitch = sound.pitch;
+        musicSource.loop = true; // Música de fundo sempre loopa
         musicSource.Play();
+        
+        // 5. Atualiza o rastreador
+        currentTrackName = name;
     }
 
     public void PlaySFX(string name)
@@ -55,13 +101,16 @@ public class AudioManager : MonoBehaviour
             return;
         }
 
-        // APLICA O PITCH À FONTE DE SFX
+        // Aplica o pitch à fonte de SFX
         sfxSource.pitch = sound.pitch;
         
-        // PlayOneShot tem uma sobrecarga que aceita um segundo argumento para o volume!
-        // Isso é perfeito para SFX, pois não altera o volume base da fonte.
-        sfxSource.PlayOneShot(sound.clip, sound.volume); // <<<--- USA O VOLUME AQUI
+        // PlayOneShot é ideal para SFX, pois permite sobreposições e usa o volume do Sound
+        sfxSource.PlayOneShot(sound.clip, sound.volume); 
     }
+
+    // --------------------------------------------------------
+    // FUNÇÃO DE BUSCA
+    // --------------------------------------------------------
 
     private Sound FindSound(string name)
     {
