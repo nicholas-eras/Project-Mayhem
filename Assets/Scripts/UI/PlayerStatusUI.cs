@@ -6,7 +6,7 @@ public class PlayerStatusUI : MonoBehaviour
 {
     // NOVO: Campos de texto separados
     [Header("Visual do Jogador")]
-    [SerializeField] private Image playerSpriteImage; 
+    [SerializeField] public Image playerSpriteImage; 
 
     [Header("Referências de Texto Separadas")]
     [SerializeField] private TextMeshProUGUI healthMaxText; // Vida Máxima

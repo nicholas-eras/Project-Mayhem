@@ -26,7 +26,14 @@ public class UpgradeManager : MonoBehaviour
 
     private Dictionary<UpgradeType, int> upgradeLevels = new Dictionary<UpgradeType, int>();
 
-    [SerializeField] private PlayerStatusUI playerStatusUI; 
+    [SerializeField] private PlayerStatusUI playerStatusUI;
+
+    // NOVO: Referência ao script de input do joystick (JoystickMove ou PlayerController se ele for o único input)
+    [Header("Input Control")]
+    [Tooltip("O script de Joystick/Movimento para desativar durante a loja.")]
+    [SerializeField] private JoystickMove movementInputScript; // <-- MUDAR O TIPO AQUI
+    [SerializeField] private GameObject joystickVisual;
+    public static bool IsShopOpen { get; private set; } = false; // NOVO: Flag de estado da loja
 
     // --- FIX 2: ADD THE AWAKE METHOD FOR SINGLETON LOGIC ---
     // This method runs before any Start() methods and ensures
@@ -48,7 +55,17 @@ public class UpgradeManager : MonoBehaviour
     {
         Time.timeScale = 0f;
         upgradePanel.SetActive(true);
+        IsShopOpen = true; // Define a flag
 
+        // AÇÃO 1: DESATIVA O INPUT DE MOVIMENTO
+        if (movementInputScript != null)
+        {
+            movementInputScript.enabled = false;
+        }
+        if (joystickVisual != null)
+        {
+            joystickVisual.SetActive(false); // DEVE DESATIVAR O VISUAL
+        }
         foreach (Transform child in cardContainer)
         {
             Destroy(child.gameObject);
@@ -182,6 +199,15 @@ public class UpgradeManager : MonoBehaviour
     
     public void CloseShop()
     {
+        if (movementInputScript != null)
+        {
+            movementInputScript.enabled = true;
+        }
+        IsShopOpen = false; // Reseta a flag
+        if (joystickVisual != null)
+        {
+            joystickVisual.SetActive(true); // <--- ESTA É A LINHA QUE FALTAVA
+        }       
         Time.timeScale = 1f;
         upgradePanel.SetActive(false);
         OnShopClosed?.Invoke();

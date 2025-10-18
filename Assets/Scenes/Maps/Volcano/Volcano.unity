@@ -419,7 +419,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 4.151462
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -1122,6 +1122,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ae68b28bb043fb34badcded1e71dc29f, type: 2}
   - {fileID: 11400000, guid: 7ff24a4168fdf9147834f53f25f93afc, type: 2}
   optionsToShow: 4
+  playerStatusUI: {fileID: 1849397679547403590}
+  movementInputScript: {fileID: 4303166156456163325}
+  joystickVisual: {fileID: 1849397679547403591}
 --- !u!4 &1139306012
 Transform:
   m_ObjectHideFlags: 0
@@ -1896,6 +1899,33 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: fc42023f7bb5867479f774c167634e35, type: 3}
+--- !u!114 &1849397679547403589 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8253916216168642837, guid: fc42023f7bb5867479f774c167634e35, type: 3}
+  m_PrefabInstance: {fileID: 1849397679547403588}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1849397679547403591}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a47f546fc70ec8428172694e78e4288, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1849397679547403590 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1849397679318083956, guid: fc42023f7bb5867479f774c167634e35, type: 3}
+  m_PrefabInstance: {fileID: 1849397679547403588}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7912ff1f890169840a7ae83b5982454d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!1 &1849397679547403591 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8253916216168642833, guid: fc42023f7bb5867479f774c167634e35, type: 3}
+  m_PrefabInstance: {fileID: 1849397679547403588}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &4303166156456163324
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1903,6 +1933,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2033299299, guid: 17af403472b56804d90b1ce2e724a7dd, type: 3}
+      propertyPath: movementJoystick
+      value: 
+      objectReference: {fileID: 1849397679547403589}
     - target: {fileID: 4303166154670506346, guid: 17af403472b56804d90b1ce2e724a7dd, type: 3}
       propertyPath: m_RootOrder
       value: 2
@@ -1961,3 +1995,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 17af403472b56804d90b1ce2e724a7dd, type: 3}
+--- !u!114 &4303166156456163325 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2033299299, guid: 17af403472b56804d90b1ce2e724a7dd, type: 3}
+  m_PrefabInstance: {fileID: 4303166156456163324}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94085bdd8893e8b48ba8c43c8d923486, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

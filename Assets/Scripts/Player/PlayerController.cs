@@ -12,6 +12,8 @@ public class PlayerController : MonoBehaviour
     private Rigidbody2D rb;
     private Vector2 moveInput;
     [HideInInspector] public HealthSystem healthSystem;
+
+    private Vector2 externalMoveInput = Vector2.zero; // Inicialmente zero
     
     // Awake é chamado uma vez, antes do Start
     void Awake()
@@ -23,19 +25,42 @@ public class PlayerController : MonoBehaviour
         currentMoveSpeed = baseMoveSpeed;
     }
 
-    // Update é chamado a cada frame
     void Update()
     {
-        // Lê o input do teclado (WASD ou setas)
-        moveInput.x = Input.GetAxisRaw("Horizontal");
-        moveInput.y = Input.GetAxisRaw("Vertical");
+        // *** BLOQUEIO DE INPUT #1: Zera o vetor no Update ***
+        if (UpgradeManager.IsShopOpen) 
+        {
+            // Se a loja está aberta, forçamos o vetor de input a ser zero.
+            // Isso anula qualquer input que o JoystickMove possa ter injetado no FixedUpdate anterior.
+            moveInput = Vector2.zero;
+            externalMoveInput = Vector2.zero;
+            return; // Sai do Update, ignorando o WASD/Joystick
+        }
+        
+        // --- Lógica Normal de Input ---
+        
+        // 1. Prioriza o Input Externo (Joystick)
+        if (externalMoveInput.sqrMagnitude > 0.01f) 
+        {
+            moveInput = externalMoveInput;
+        }
+        else
+        {
+            // 2. Fallback para WASD se o Joystick não estiver ativo
+            moveInput.x = Input.GetAxisRaw("Horizontal");
+            moveInput.y = Input.GetAxisRaw("Vertical");
+        }
     }
 
-    // FixedUpdate é chamado em um intervalo de tempo fixo, ideal para física
-    void FixedUpdate()
+void FixedUpdate()
+{
+    rb.MovePosition(rb.position + moveInput.normalized * currentMoveSpeed * Time.fixedDeltaTime);
+}
+
+    public void SetExternalMovementInput(Vector2 direction)
     {
-        // Normalizamos o vetor para que o movimento na diagonal não seja mais rápido
-        rb.MovePosition(rb.position + moveInput.normalized * currentMoveSpeed * Time.fixedDeltaTime);
+        // Recebe a direção contínua (-1 a 1) do joystick
+        externalMoveInput = direction;
     }
 
     public void IncreaseSpeedMultiplier(float percentage)
