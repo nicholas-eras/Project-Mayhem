@@ -8,7 +8,6 @@ public class AudioManager : MonoBehaviour
     public static AudioManager Instance;
 
     [Header("Fontes de Áudio")]
-    [SerializeField] private AudioSource musicSource;
     [SerializeField] private AudioSource sfxSource;
 
     [Header("Biblioteca de Áudio")]
@@ -24,8 +23,6 @@ public class AudioManager : MonoBehaviour
             Instance = this;
             DontDestroyOnLoad(gameObject);
             
-            // 2. Se inscreve para o evento de carregamento de cena
-            SceneManager.sceneLoaded += OnSceneLoaded; 
         }
         else
         {
@@ -34,63 +31,9 @@ public class AudioManager : MonoBehaviour
         }
     }
     
-    void OnDestroy()
-    {
-        // 3. Remove a inscrição quando o objeto é destruído para evitar erros
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-    
-    // Opcional: Inicia a música da primeira cena carregada
-    void Start()
-    {
-        // Garante que a primeira cena (geralmente MainMenu ou MapSelect) tenha sua música.
-        // O OnSceneLoaded cuidará disso, mas Start é uma segurança extra.
-        // O nome da trilha deve ser igual ao nome da sua cena inicial.
-        PlayMusic(SceneManager.GetActiveScene().name); 
-    }
-
-    // 4. Chamado automaticamente quando uma nova cena é carregada
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        // Usa o nome da cena (Ex: "Cyberpunk", "MapSelectScene") para buscar a trilha
-        PlayMusic(scene.name);
-    }
-
     // ========================================================
     // FUNÇÕES PÚBLICAS DE CONTROLE
     // ========================================================
-
-    public void PlayMusic(string name)
-    {
-        // 1. Evita tocar a mesma música novamente
-        if (musicSource.isPlaying && currentTrackName == name)
-        {
-            return;
-        }
-        
-        // 2. Procura o Sound Asset na biblioteca
-        Sound sound = FindSound(name);
-        if (sound == null)
-        {
-            Debug.LogWarning($"Música: '{name}' não encontrada na Sound List. Verifique se o nome da trilha é igual ao nome da cena.");
-            musicSource.Stop(); 
-            currentTrackName = string.Empty;
-            return;
-        }
-        
-        // 3. Para a música anterior
-        musicSource.Stop(); 
-
-        // 4. Inicia a nova música
-        musicSource.clip = sound.clip;
-        musicSource.volume = sound.volume;
-        musicSource.pitch = sound.pitch;
-        musicSource.loop = true; // Música de fundo sempre loopa
-        musicSource.Play();
-        
-        // 5. Atualiza o rastreador
-        currentTrackName = name;
-    }
 
     public void PlaySFX(string name)
     {

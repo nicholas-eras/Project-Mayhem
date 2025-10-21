@@ -24,8 +24,7 @@ public class UpgradeManager : MonoBehaviour
 
     public event UnityAction OnShopClosed;
 
-    private Dictionary<UpgradeType, int> upgradeLevels = new Dictionary<UpgradeType, int>();
-
+    private Dictionary<UpgradeData, int> upgradeLevelsByAsset = new Dictionary<UpgradeData, int>();
     [SerializeField] private PlayerStatusUI playerStatusUI;
 
     // NOVO: Referência ao script de input do joystick (JoystickMove ou PlayerController se ele for o único input)
@@ -108,41 +107,56 @@ public class UpgradeManager : MonoBehaviour
 
     public void PurchaseUpgrade(UpgradeData upgrade, UpgradeCardUI cardUI)
     {
-        int requiredCost = GetCurrentCost(upgrade);
+        // 1. Calcula o custo dinâmico DESSA carta.
+        int requiredCost = GetCurrentCost(upgrade); 
 
         if (playerWallet.SpendMoney(requiredCost))
         {
+            // --- Lógica de Compra e Aplicação ---
+            
             ApplyUpgrade(upgrade);
             
-            if (!upgradeLevels.ContainsKey(upgrade.type))
-            {
-                upgradeLevels.Add(upgrade.type, 0);
-            }
-            upgradeLevels[upgrade.type]++;
+            // 2. CRUCIAL: AUMENTA O NÍVEL DO ASSET ESPECÍFICO
             
-            // NOVO: Atualiza o painel de status após aplicar o upgrade
+            // Tenta obter o nível atual. Se não existir, retorna 0.
+            int currentLevel = 0;
+            upgradeLevelsByAsset.TryGetValue(upgrade, out currentLevel); 
+
+            // Incrementa o nível e salva na chave do Asset.
+            upgradeLevelsByAsset[upgrade] = currentLevel + 1;
+            
+            // Opcional: Se você precisa rastrear o número total de upgrades por tipo:
+            // if (!upgradeLevelsByType.ContainsKey(upgrade.type)) { upgradeLevelsByType.Add(upgrade.type, 0); }
+            // upgradeLevelsByType[upgrade.type]++;
+
+            // 3. Atualiza o painel de status do jogador
             if (playerStatusUI != null)
             {
                 playerStatusUI.UpdateDisplay();
             }
             
+            // 4. Atualiza o custo de OUTRAS cartas que usam o MESMO TIPO (Ex: Dano Global)
             UpdateAllVisibleCardCosts(upgrade.type);
+            
+            // 5. Destrói a carta comprada
             Destroy(cardUI.gameObject);
         }
         else
         {
             Debug.Log("Dinheiro insuficiente! Custo: " + requiredCost);
+            // AudioManager.Instance.PlaySFX("Purchase_Fail");
         }
     }
-
     public int GetCurrentCost(UpgradeData upgrade)
     {
-        if (!upgradeLevels.ContainsKey(upgrade.type))
-        {
-            upgradeLevels.Add(upgrade.type, 0);
-        }
-        int currentLevel = upgradeLevels[upgrade.type];
+        // 1. Obtém o nível atual (ou 0 se for a primeira vez)
+        int currentLevel = 0;
+        upgradeLevelsByAsset.TryGetValue(upgrade, out currentLevel); // Pega o nível pelo Asset
+
+        // 2. Calcula o custo progressivo
         float costMultiplier = 1f + (upgrade.priceIncreasePerLevel * currentLevel);
+        
+        // Arredonda para o inteiro mais próximo
         return Mathf.RoundToInt(upgrade.baseCost * costMultiplier);
     }
 

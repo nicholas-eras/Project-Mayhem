@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c427de977e13396459eeabf1ccbf1a4d, type: 3}
+  m_Name: PoisonDisk
+  m_EditorClassIdentifier: 
+  frames:
+  - {fileID: -5005990984189769374, guid: fb3e4dde16736c747977bf2ff0d60e6b, type: 3}
+  - {fileID: -887327768880906463, guid: fb3e4dde16736c747977bf2ff0d60e6b, type: 3}
+  - {fileID: 3296144372841241373, guid: fb3e4dde16736c747977bf2ff0d60e6b, type: 3}
+  - {fileID: 16603674079127399, guid: fb3e4dde16736c747977bf2ff0d60e6b, type: 3}
+  - {fileID: -3208200363666331675, guid: fb3e4dde16736c747977bf2ff0d60e6b, type: 3}
+  - {fileID: 4963051859535109326, guid: fb3e4dde16736c747977bf2ff0d60e6b, type: 3}
+  framesPerSecond: 12
+  loop: 1

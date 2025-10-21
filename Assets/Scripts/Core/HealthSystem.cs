@@ -47,20 +47,18 @@ public class HealthSystem : MonoBehaviour
 
         OnHealthChanged?.Invoke(currentHealth, MaxHealth);
 
-        if (isPlayer)
-        {
-            if (canRegen)
+        if (canRegen)
             {
                 StartCoroutine(RegenRoutine());
             }
             
-            // --- FIX 1: SUBSCRIBE USING THE SINGLETON INSTANCE ---
-            // Access the OnShopClosed event via UpgradeManager.Instance
-            if (UpgradeManager.Instance != null)
-            {
-                UpgradeManager.Instance.OnShopClosed += FullHealthRegen;
-            }
+        // --- FIX 1: SUBSCRIBE USING THE SINGLETON INSTANCE ---
+        // Access the OnShopClosed event via UpgradeManager.Instance
+        if (UpgradeManager.Instance != null)
+        {
+            UpgradeManager.Instance.OnShopClosed += FullHealthRegen;
         }
+        
 
         EnemyController controller = GetComponent<EnemyController>();
         if (controller != null && controller.isBoss)
@@ -126,32 +124,66 @@ public class HealthSystem : MonoBehaviour
 
     public void TakeDamage(DamageInfo info, GameObject damageSource = null)
     {
-        if (damageSource != null && sourcesOnCooldown.Contains(damageSource))
+        // 1. CHECAGEM DE COOLDOWN/INVULNERABILIDADE (i-frames)
+
+        // O cooldown é ativado apenas se houver uma fonte de dano (não é tick de veneno).
+        bool hasDamageSource = damageSource != null;
+
+        // Verifica se a fonte de dano está em cooldown
+        bool isSourceOnCooldown = hasDamageSource && sourcesOnCooldown.Contains(damageSource);
+
+        if (isSourceOnCooldown)
         {
-            return;
+            // Permite que o dano UNBLOCKABLE e de VENENO passem pelo cooldown.
+            // Se for STANDARD, o dano é bloqueado (return).
+            if (info.type != DamageType.Unblockable && info.type != DamageType.Poison)
+            {
+                return;
+            }
+            // Se for Unblockable ou Poison, o código continua e o dano é aplicado.
         }
 
+        // Se o alvo já está morto, saia
         if (currentHealth <= 0) return;
 
+        // 2. APLICAÇÃO DE DANO E FEEDBACK
+
+        // Toca o som de dano
         if (!string.IsNullOrEmpty(takeDamageSoundName))
         {
+            // Remove os comentários se o AudioManager.Instance.PlaySFX estiver configurado.
             AudioManager.Instance.PlaySFX(takeDamageSoundName);
         }
 
-        currentHealth -= info.damageAmount;
-        currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);
+        if (info.type == DamageType.Poison && currentHealth - info.damageAmount < 1)
+        {
+            currentHealth = 1;
+        }
+        else
+        {
+            currentHealth -= info.damageAmount;
+            currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);    
+        }        
+
+        // Atualiza a UI
         OnHealthChanged?.Invoke(currentHealth, MaxHealth);
 
-        if (damageSource != null)
+        // 3. ATIVAÇÃO DO COOLDOWN DE INVULNERABILIDADE
+
+        // O cooldown de invulnerabilidade é aplicado APENAS se:
+        // a) Houver uma fonte (para rastreá-la).
+        // b) O dano NÃO for um tick de veneno (pois o veneno não deve ser bloqueado por i-frames).
+        if (hasDamageSource && info.type != DamageType.Poison)
         {
             StartCoroutine(AddSourceToCooldown(damageSource));
         }
 
+        // 4. CHECAGEM DE MORTE
         if (currentHealth <= 0)
         {
             Die();
         }
-    }
+    }        
 
     private IEnumerator AddSourceToCooldown(GameObject source)
     {
@@ -160,15 +192,28 @@ public class HealthSystem : MonoBehaviour
         sourcesOnCooldown.Remove(source);
     }
 
-    private void Die()
+   private void Die()
+{
+    OnDeath?.Invoke();
+    
+    // 1. Loga que a morte está ocorrendo
+    Debug.Log($"[HS] {gameObject.name} (HP 0): Tentando iniciar a morte."); 
+    
+    EnemyController enemyController = GetComponent<EnemyController>();
+    
+    if (enemyController != null)
     {
-        OnDeath?.Invoke();
-        if (!string.IsNullOrEmpty(deathSoundName))
-        {
-            AudioManager.Instance.PlaySFX(deathSoundName);
-        }
+        // 2. Loga se encontrou o controlador
+        Debug.Log("[HS] Chamando EnemyController.Die() para liberar payload.");
+        enemyController.Die(); 
+    }
+    else
+    {
+        // 3. Loga se destruiu diretamente (Player, etc.)
+        Debug.Log("[HS] Nao ha Controller. Destruicao direta.");
         Destroy(gameObject);
     }
+}
     
     // ========================================================
     // FUNÇÕES DE UPGRADE CHAMADAS PELO UPGRADEMANAGER

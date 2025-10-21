@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1134353745264866863
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1134353745264866857}
+  - component: {fileID: 1134353745264866862}
+  m_Layer: 0
+  m_Name: UpgradeManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1134353745264866857
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1134353745264866863}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.41959327, y: 0.101012416, z: -1153.9799}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1134353745264866862
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1134353745264866863}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3dc977bafaf56154f904a7c999ec992c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  upgradePanel: {fileID: 0}
+  upgradeCardPrefab: {fileID: 458323619234627957, guid: 9ea4663992e775740a9c14961b713fa9, type: 3}
+  cardContainer: {fileID: 0}
+  playerWallet: {fileID: 0}
+  playerController: {fileID: 0}
+  playerHealthSystem: {fileID: 0}
+  playerWeaponManager: {fileID: 0}
+  allUpgrades:
+  - {fileID: 11400000, guid: fef2cb53e27cd184791f47745d04b9b7, type: 2}
+  - {fileID: 11400000, guid: 19f03f075b1dfa94b825bd83fa767d14, type: 2}
+  - {fileID: 11400000, guid: 0ceb156cb10215a49b50451a0d90763c, type: 2}
+  - {fileID: 11400000, guid: edb30a743d755204cb7c19c854b4fc3f, type: 2}
+  - {fileID: 11400000, guid: c70b3b9ef5a47274d979a4f9c505af7f, type: 2}
+  - {fileID: 11400000, guid: 154357bd7ffbc4c4f9b5079bf234bb60, type: 2}
+  - {fileID: 11400000, guid: ae68b28bb043fb34badcded1e71dc29f, type: 2}
+  - {fileID: 11400000, guid: 7ff24a4168fdf9147834f53f25f93afc, type: 2}
+  - {fileID: 11400000, guid: 43994a8822167c64e85d35ef04db7662, type: 2}
+  optionsToShow: 4
+  playerStatusUI: {fileID: 0}
+  movementInputScript: {fileID: 0}
+  joystickVisual: {fileID: 0}

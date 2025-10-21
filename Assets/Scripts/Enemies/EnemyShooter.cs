@@ -28,7 +28,14 @@ public class EnemyShooter : MonoBehaviour
 
     private Transform playerTarget;
     private float nextFireTime;
+    private PatternShooter patternShooter; 
 
+    void Awake()
+    {
+        // Tenta obter o PatternShooter (se estiver anexado)
+        patternShooter = GetComponent<PatternShooter>(); 
+    }
+    
     void Start()
     {
         GameObject player = GameObject.FindGameObjectWithTag("Player");
@@ -51,15 +58,92 @@ public class EnemyShooter : MonoBehaviour
 
         if (distanceToPlayer <= shootingRange)
         {
-            AimAtPlayer();
+            // O PatternShooter lida com a mira/rotação, a menos que não esteja anexado.
+            if (patternShooter == null)
+            {
+                AimAtPlayer(); 
+            }
 
             if (Time.time >= nextFireTime)
             {
-                Shoot();
-                nextFireTime = Time.time + fireRate;
+                // Verifica se o padrão é Espiral (Corrotina) para gerenciar o cooldown corretamente.
+                bool isSpiral = patternShooter != null && patternShooter.currentPatternRoutine != null;
+
+                // CRUCIAL: Chama o PatternShooter se:
+                // 1. Ele não existir (Shoot simples).
+                // 2. O Pattern existir E for um Burst OU for uma Espiral que acabou de terminar.
+                if (patternShooter != null)
+                {
+                    // Se for Espiral e estiver rodando, não faz nada (a corrotina controla o tiro).
+                    if (isSpiral)
+                    {
+                        // Se for o primeiro tiro da Espiral, o ShootPattern será chamado.
+                        // Se a espiral já estiver rodando, o controle fica na corrotina.
+                    }
+                    else
+                    {
+                        // Para todos os outros padrões (incluindo Espiral finalizada), chame ShootPattern.
+                        patternShooter.ShootPattern(projectileDamage, projectileSpeed, projectileLifetime);
+                        nextFireTime = Time.time + fireRate; // Aplica o cooldown normal
+                    }
+                }
+                else
+                {
+                    // PatternShooter não existe: tiro simples.
+                    Shoot(); 
+                    nextFireTime = Time.time + fireRate;
+                }
             }
         }
     }
+    
+    // =================================================================
+    // MÉTODOS DE INSTANCIAÇÃO (PARA USO EXTERNO PELO PatternShooter)
+    // =================================================================
+
+    // 1. MÉTODO PADRÃO (VOID): Usado pela maioria dos padrões (simplesmente atira).
+    public void InstantiateProjectile(Vector3 position, Quaternion rotation, float damage, float speed, float lifetime) 
+    {
+        if (projectilePrefab == null) return;
+
+        GameObject projectileGO = Instantiate(projectilePrefab, position, rotation); 
+        
+        // Aplica correção de escala
+        Vector3 originalScale = projectileGO.transform.localScale;
+        originalScale.x = Mathf.Abs(originalScale.x); 
+        projectileGO.transform.localScale = originalScale; 
+
+        Projectile projectileScript = projectileGO.GetComponent<Projectile>();
+        if (projectileScript != null)
+        {
+            projectileScript.Configure(damage, speed, lifetime);
+        }
+    }
+    
+    // 2. MÉTODO COM RETORNO (GameObject): Usado APENAS pela Cruz Rotatória (para setar o Parent).
+    public GameObject InstantiateProjectileGo(Vector3 position, Quaternion rotation, float damage, float speed, float lifetime)
+    {
+        if (projectilePrefab == null) return null;
+
+        GameObject projectileGO = Instantiate(projectilePrefab, position, rotation); 
+        
+        // Aplica correção de escala
+        Vector3 originalScale = projectileGO.transform.localScale;
+        originalScale.x = Mathf.Abs(originalScale.x); 
+        projectileGO.transform.localScale = originalScale; 
+
+        Projectile projectileScript = projectileGO.GetComponent<Projectile>();
+        if (projectileScript != null)
+        {
+            projectileScript.Configure(damage, speed, lifetime);
+        }
+        
+        return projectileGO; // Retorna o objeto instanciado
+    }
+    
+    // =================================================================
+    // MÉTODOS INTERNOS E DE CONTROLE
+    // =================================================================
 
     private void AimAtPlayer()
     {
@@ -68,64 +152,32 @@ public class EnemyShooter : MonoBehaviour
         Vector2 direction = playerTarget.position - transform.position;
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
 
-        // Armazena a escala atual para evitar perder os valores pequenos (0.07)
-        Vector3 currentScale = transform.localScale;
-
-        // 1. GIRA APENAS O PONTO DE TIRO (Isso não afeta o corpo, resolve o problema do tiro)
+        // GIRA APENAS O PONTO DE TIRO
         firePoint.rotation = Quaternion.Euler(new Vector3(0, 0, angle));
 
-        // 2. FLIP/INVERSÃO DO CORPO: Apenas muda o sinal da escala X.
+        // FLIP/INVERSÃO DO CORPO
+        Vector3 currentScale = transform.localScale;
         if (direction.x < 0)
         {
-            // Vira para a esquerda: usa o valor negativo da escala X, mantendo Y e Z
-            // Mathf.Abs garante que o valor seja 0.07, e o '-' inverte o sinal.
             currentScale.x = -Mathf.Abs(currentScale.x);
         }
         else
         {
-            // Vira para a direita: usa o valor positivo da escala X
             currentScale.x = Mathf.Abs(currentScale.x);
         }
-
-        // Aplica a escala com o flip, mantendo o 0.07 nos eixos X, Y e Z
         transform.localScale = currentScale;
     }
-    
-    // NO EnemyShooter.cs
+
     private void Shoot()
     {
-        // 1. Instancia o projétil com a rotação correta
-        GameObject projectileGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
-
-        // 2. CRUCIAL: Neutralizar a escala X negativa, mantendo o tamanho original.
-        // O firePoint herda a escala do inimigo (que pode ser negativa: -0.07).
-        Vector3 originalScale = projectileGO.transform.localScale;
-        
-        // Força a escala X a ser POSITIVA, mantendo o valor absoluto (tamanho original)
-        originalScale.x = Mathf.Abs(originalScale.x); 
-        
-        // Aplica a escala corrigida
-        projectileGO.transform.localScale = originalScale; 
-
-        // 3. Configura o projétil
-        Projectile projectileScript = projectileGO.GetComponent<Projectile>();
-
-        if (projectileScript != null)
-        {
-            projectileScript.Configure(projectileDamage, projectileSpeed, projectileLifetime);
-        }
-        else
-        {
-            Debug.LogError("O prefab do projétil não contém o script 'Projectile'!");
-        }
+        // Se o PatternShooter não existe, o inimigo atira um projétil simples do FirePoint
+        Quaternion rotation = firePoint.rotation;
+        InstantiateProjectile(firePoint.position, rotation, projectileDamage, projectileSpeed, projectileLifetime); 
     }
+
     private void OnDrawGizmosSelected()
     {
-        // Desenha um círculo na posição do inimigo (onde o script está)
-        Gizmos.color = Color.red; // Cor para o alcance de tiro (ex: Vermelho)
-        
-        // O círculo representa o alcance de tiro.
-        // O inimigo só atira quando o Player entra DENTRO deste círculo.
+        Gizmos.color = Color.red; 
         Gizmos.DrawWireSphere(transform.position, shootingRange);
     }
 }

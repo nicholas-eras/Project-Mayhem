@@ -1,11 +1,18 @@
 using UnityEngine;
 
+
+public enum DeathEffect
+{
+    None,            // Destrói normalmente
+    InstantiatePrefab // Instancia um prefab (Área de Efeito, Partículas, etc.)
+}
+
 public class EnemyController : MonoBehaviour
 {
     [Header("Stats")]
     [SerializeField] private float moveSpeed = 4f;
     [SerializeField] private int collisionDamage = 10;
-    
+
     [Tooltip("Distância mínima do jogador para que o inimigo pare de se mover.")]
     [SerializeField] private float stopDistance = 0f; // Distância de parada (o seu "enemydistance")
 
@@ -22,6 +29,16 @@ public class EnemyController : MonoBehaviour
     [Tooltip("O ponto de ancoragem para a barra de vida (um objeto filho vazio).")]
     public Transform healthBarMountPoint;
 
+    [Header("Efeito de Morte")]
+    [Tooltip("O que o inimigo deve fazer ao ser destruído.")]
+    [SerializeField] private DeathEffect deathEffect = DeathEffect.None;
+
+    [Tooltip("O Prefab a ser instanciado (Ex: PoisonCloudZone, FireZone).")]
+    [SerializeField] private GameObject deathPayloadPrefab;
+
+    [Tooltip("A duração que o Prefab de Efeito deve persistir (Passado via Setup).")]
+    [SerializeField] private float areaEffectDuration = 5f; // Duração para AreaEffectZone.cs
+
     private Transform playerTarget;
 
     void Start()
@@ -34,6 +51,50 @@ public class EnemyController : MonoBehaviour
         }
     }
 
+    // Função de Morte Chamada pelo HealthSystem
+    public void Die()
+{
+    // 1. Checa se o efeito de morte está ativo
+    if (deathEffect == DeathEffect.InstantiatePrefab)
+    {
+        HandleInstantiateDeathPayload();
+    }
+    
+    // 2. Loga a destruição final
+    Debug.Log($"[EC] {gameObject.name}: Destruicao final."); 
+
+    // Finalmente, remove o objeto do inimigo
+    Destroy(gameObject);
+}
+    
+    private void HandleInstantiateDeathPayload()
+{
+    if (deathPayloadPrefab == null)
+    {
+        Debug.LogWarning($"[EC] {gameObject.name} FALHA: Death Payload Prefab esta nulo.");
+        return;
+    }
+    
+    // NOVO LOG: Confirma a instanciação
+    Debug.Log($"[EC] SUCESSO: Instanciando payload '{deathPayloadPrefab.name}' em {transform.position}"); 
+
+    // 1. Instancia o Prefab
+    GameObject payloadGO = Instantiate(deathPayloadPrefab, transform.position, Quaternion.identity);
+
+    // 2. Tenta configurar o Prefab como uma Zona de Efeito
+    AreaEffectZone effectZone = payloadGO.GetComponent<AreaEffectZone>();
+    
+    if (effectZone != null)
+    {
+        effectZone.Setup(areaEffectDuration); 
+        // NOVO LOG: Confirma o Setup
+        Debug.Log($"[EC] Setup da AreaEffectZone concluido. Duracao: {areaEffectDuration}s."); 
+    }
+    else
+    {
+        Debug.LogWarning($"[EC] Payload instanciado, mas nao contem AreaEffectZone. Setup ignorado.");
+    }
+}
     void Update()
     {
         if (playerTarget == null) return;
@@ -73,11 +134,11 @@ public class EnemyController : MonoBehaviour
     {
         // Desenha um círculo na posição do inimigo
         Gizmos.color = Color.yellow; // Cor para a distância de parada (ex: Amarelo)
-        
+
         // O círculo representa o alcance de parada. 
         // O inimigo para quando o Player entra DENTRO deste círculo.
         Gizmos.DrawWireSphere(transform.position, stopDistance);
-        
+
         // Opcional: Desenhar a direção para onde o inimigo está olhando (para debug)
         Gizmos.color = Color.red;
         Gizmos.DrawRay(transform.position, transform.right * (stopDistance + 0.5f));

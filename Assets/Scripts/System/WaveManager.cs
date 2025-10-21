@@ -12,9 +12,12 @@ public class WaveManager : MonoBehaviour
     public class EnemyGroup
     {
         public GameObject enemyPrefab;
-        public int count; // Quantos inimigos DESTE TIPO irão surgir
-        public float spawnInterval; // O intervalo de tempo entre cada spawn DESTE GRUPO
-        public float initialDelay; // Um atraso opcional antes que este grupo comece a surgir
+        public int count; 
+        public float spawnInterval; 
+        public float initialDelay; 
+        
+        [Tooltip("Marque se este grupo deve ser tratado como um Boss (spawn fixo).")]
+        public bool isBossGroup = false; // <--- NOVO CAMPO
     }
 
     [System.Serializable]
@@ -22,6 +25,10 @@ public class WaveManager : MonoBehaviour
     {
         public string waveName;
         public List<EnemyGroup> enemyGroups; // Lista de "receitas" de spawn para esta onda
+        [Header("Configuração de Arena")]
+        [Tooltip("Se for True, o Player nascerá no ponto 'isBossSpawnPoint = true'.")]
+        public bool useBossPlayerSpawn = false; // <--- CORREÇÃO: ADICIONAR ESTE CAMPO
+        public Vector3 bossFixedSpawnPosition = Vector3.zero; // <--- NOVO CAMPO
     }
 
     [Header("Configuração das Ondas")]
@@ -34,9 +41,23 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private float coinCollectionTime = 1.5f;
 
     private int currentWaveIndex = 0;
-
+    
+    private Transform playerInstance;
+    private Vector3 playerStandardSpawnPosition = Vector3.zero;
+    private Vector3 playerBossSpawnPosition = Vector3.zero;
+    private GameObject currentBossInstance = null; // <--- ADICIONAR ISSO AQUI
     void Start()
     {
+        // 1. Encontra a instância do Player
+        GameObject playerGO = GameObject.FindGameObjectWithTag("Player");
+        if (playerGO != null)
+        {
+            playerInstance = playerGO.transform;
+        }
+
+        // 2. Encontra os pontos de spawn do Player
+        FindAndSetPlayerSpawnPoints();
+
         // A verificação de segurança já está boa aqui.
         if (UpgradeManager.Instance == null)
         {
@@ -44,6 +65,30 @@ public class WaveManager : MonoBehaviour
         }
         // Inicia a primeira onda.
         StartCoroutine(StartNextWave());
+    }
+    
+    // NOVO MÉTODO: Localiza os objetos PlayerSpawn na cena
+    private void FindAndSetPlayerSpawnPoints()
+    {
+        PlayerSpawn[] spawns = FindObjectsOfType<PlayerSpawn>();
+        
+        if (spawns.Length == 0)
+        {
+            Debug.LogWarning("Nenhum PlayerSpawn.cs encontrado. Player sempre nascerá em (0,0,0).");
+            return;
+        }
+
+        foreach (PlayerSpawn spawn in spawns)
+        {
+            if (spawn.isBossSpawnPoint)
+            {
+                playerBossSpawnPosition = spawn.transform.position; 
+            }
+            else
+            {
+                playerStandardSpawnPosition = spawn.transform.position; 
+            }
+        }
     }
 
     void OnEnable()
@@ -83,10 +128,24 @@ public class WaveManager : MonoBehaviour
 
         Wave currentWave = waves[currentWaveIndex];
         
-        // This now works because the event is declared.
+        // 2. POSICIONAMENTO DO PLAYER (Prepara a arena para a luta)
+        if (playerInstance != null)
+        {
+            // Se a onda for marcada como 'Boss Spawn', move o Player para a posição Boss.
+            // NOTA: Você deve adicionar 'public bool useBossPlayerSpawn' na sua struct Wave.
+            if (currentWave.useBossPlayerSpawn) 
+            {
+               playerInstance.position = playerBossSpawnPosition;
+            }
+            else
+            {
+                playerInstance.position = playerStandardSpawnPosition; 
+            }
+        }
+        
+        // 3. INÍCIO DA ONDA E SPAWN
         OnNewWaveStarted?.Invoke(currentWave.waveName);
         
-        // --- Lógica de Spawn ---
         List<Coroutine> runningSpawners = new List<Coroutine>();
         foreach (var group in currentWave.enemyGroups)
         {
@@ -100,14 +159,14 @@ public class WaveManager : MonoBehaviour
             yield return spawner;
         }
         
-        // Espera todos os inimigos serem derrotados
+        // 4. ESPERA PELOS INIMIGOS
         while (GameObject.FindGameObjectWithTag("Enemy") != null)
         {
             yield return null;
         }
 
-        // --- Lógica de Coleta de Moedas ---
-        Coin[] remainingCoins = FindObjectsOfType<Coin>(); // Changed to FindObjectsOfType for better performance
+        // 5. LÓGICA DE COLETA DE MOEDAS
+        Coin[] remainingCoins = FindObjectsOfType<Coin>();
         
         if (remainingCoins.Length > 0)
         {
@@ -118,7 +177,7 @@ public class WaveManager : MonoBehaviour
 
             yield return new WaitForSeconds(coinCollectionTime);
             
-            // Re-check for coins that might have been collected during the wait
+            // Destrói moedas restantes (por segurança)
             Coin[] coinsToDestroy = FindObjectsOfType<Coin>();
             foreach (Coin coin in coinsToDestroy)
             {
@@ -129,24 +188,23 @@ public class WaveManager : MonoBehaviour
             }
         }
 
-        // 2. CHAMA O SHOP
+        // 6. CHAMA O SHOP (Próxima Fase)
         if (UpgradeManager.Instance != null)
         {
-             UpgradeManager.Instance.ShowUpgradeScreen();
+            UpgradeManager.Instance.ShowUpgradeScreen();
         }
         else
         {
-             Debug.LogError("UpgradeManager.Instance é nulo. Pulando tela de Upgrade.");
-             // Força o avanço para a próxima onda se o Manager estiver faltando
-             HandleShopClosed(); 
+            Debug.LogError("UpgradeManager.Instance é nulo. Pulando tela de Upgrade.");
+            // Se o Manager falhar, força o avanço para a próxima onda
+            HandleShopClosed(); 
         }
     }
-
     // Esta função é chamada pelo evento OnShopClosed
     private void HandleShopClosed()
     {
         currentWaveIndex++;
-        // Inicia a próxima onda
+        currentBossInstance = null; // Limpa a referência para a próxima onda
         StartCoroutine(StartNextWave());
     }
 
@@ -158,22 +216,69 @@ public class WaveManager : MonoBehaviour
             yield return new WaitForSeconds(group.initialDelay);
         }
 
-        for (int i = 0; i < group.count; i++)
+        Transform targetSpawnPoint = null;
+        if (group.isBossGroup)
         {
-            SpawnEnemy(group.enemyPrefab);
-            yield return new WaitForSeconds(group.spawnInterval);
+            // Se for Boss, cria um Transform temporário para o spawn fixo
+            GameObject tempSpawn = new GameObject($"Boss_Spawn_{group.enemyPrefab.name}");
+            // Usa o ponto fixo definido na struct Wave
+            tempSpawn.transform.position = waves[currentWaveIndex].bossFixedSpawnPosition;
+            targetSpawnPoint = tempSpawn.transform;
+        }
+        
+        bool isInfiniteSpawn = group.count <= 0;
+        int totalToSpawn = isInfiniteSpawn ? 1 : group.count; // Se infinito, o loop é infinito, senão, usa a contagem
+
+        // Se o grupo for o Boss, salva a instância para referência global
+        if (group.isBossGroup)
+        {
+            // Spawna o Boss uma vez, independentemente da contagem.
+            currentBossInstance = SpawnEnemy(group.enemyPrefab, targetSpawnPoint);
+            totalToSpawn = 0; // O Boss já nasceu, então não faz mais spawn neste loop.
+            
+            // Limpa o Transform temporário
+            if (targetSpawnPoint != null)
+            {
+                Destroy(targetSpawnPoint.gameObject);
+            }
+        }
+
+        // A. Spawn Finito
+        if (!isInfiniteSpawn)
+        {
+            for (int i = 0; i < totalToSpawn; i++)
+            {
+                SpawnEnemy(group.enemyPrefab, targetSpawnPoint);
+                yield return new WaitForSeconds(group.spawnInterval);
+            }
+        }
+        // B. Spawn Infinito (Minions)
+        else if (isInfiniteSpawn && currentBossInstance != null)
+        {
+            // O loop continua enquanto o Boss existir
+            while (currentBossInstance != null)
+            {
+                SpawnEnemy(group.enemyPrefab, targetSpawnPoint);
+                yield return new WaitForSeconds(group.spawnInterval);
+            }
         }
     }
 
-    void SpawnEnemy(GameObject enemyPrefab)
+    GameObject SpawnEnemy(GameObject enemyPrefab, Transform fixedSpawnPoint)
     {
-        if (spawnPoints.Length == 0) return;
-        Transform randomSpawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
-        Instantiate(enemyPrefab, randomSpawnPoint.position, randomSpawnPoint.rotation);
+        Transform finalSpawnPoint;
+
+        if (fixedSpawnPoint != null)
+        {
+            finalSpawnPoint = fixedSpawnPoint;
+        }
+        else
+        {
+            if (spawnPoints.Length == 0) return null;
+            finalSpawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
+        }
+        
+        // Retorna a instância para que possa ser armazenada
+        return Instantiate(enemyPrefab, finalSpawnPoint.position, finalSpawnPoint.rotation);
     }
-    
-    // FIX 3: REMOVED UNNECESSARY METHOD
-    // The 'Initialize' method and 'currentUpgradeManager' field were removed.
-    // Relying solely on the singleton pattern (UpgradeManager.Instance) is cleaner,
-    // more reliable, and removes the bugs caused by the mixed approach.
 }
