@@ -1,5 +1,5 @@
 using UnityEngine;
-
+using System.Linq; // <-- ADICIONAR ESTA LINHA
 
 public enum DeathEffect
 {
@@ -43,12 +43,7 @@ public class EnemyController : MonoBehaviour
 
     void Start()
     {
-        // Encontra o jogador pelo Tag "Player"
-        GameObject player = GameObject.FindGameObjectWithTag("Player");
-        if (player != null)
-        {
-            playerTarget = player.transform;
-        }
+        ChooseRandomTarget();
     }
 
     // Função de Morte Chamada pelo HealthSystem
@@ -127,6 +122,21 @@ public class EnemyController : MonoBehaviour
                 // Tenta causar dano, passando a identidade do inimigo (gameObject) como fonte.
                 playerHealth.TakeDamage(damagePacket, gameObject);
             }
+        }
+    }
+
+    void ChooseRandomTarget()
+    {
+        GameObject[] possibleTargets = GameObject.FindGameObjectsWithTag("Player");
+        
+        if (possibleTargets.Length > 0)
+        {
+            // Escolhe um alvo aleatório
+            int randomIndex = Random.Range(0, possibleTargets.Length);
+            playerTarget = possibleTargets[randomIndex].transform;
+            
+            // Ou se quiser o MAIS PRÓXIMO:
+            playerTarget = possibleTargets.OrderBy(t => Vector3.Distance(t.transform.position, transform.position)).First().transform;
         }
     }
 
