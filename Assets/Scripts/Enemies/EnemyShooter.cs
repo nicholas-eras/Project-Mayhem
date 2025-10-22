@@ -168,7 +168,7 @@ public class EnemyShooter : MonoBehaviour
         transform.localScale = currentScale;
     }
 
-    private void Shoot()
+    public void Shoot()
     {
         // Se o PatternShooter não existe, o inimigo atira um projétil simples do FirePoint
         Quaternion rotation = firePoint.rotation;

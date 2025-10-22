@@ -203,7 +203,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   projectilePrefab: {fileID: 2390562463378662168, guid: 395cc23d86c884642a8e8cd935a47b40, type: 3}
   firePoint: {fileID: 6969154949340270906}
-  projectileDamage: 10
+  projectileDamage: 4
   projectileSpeed: 5
   projectileLifetime: 5
   fireRate: 1.5
@@ -225,7 +225,7 @@ MonoBehaviour:
   burstCount: 12
   spreadAngle: 45
   totalProjectilesInColumn: 12
-  columnSpacing: 1
+  columnSpacing: 2
   randomizeEscapeIndex: 1
   fixedEscapeIndex: 3
   infiniteSpiral: 0

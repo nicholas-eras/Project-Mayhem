@@ -1,7 +1,6 @@
 using UnityEngine;
 
 // O AnimationData (ScriptableObject) é necessário.
-// O SpriteRenderer é necessário para trocar os sprites.
 [RequireComponent(typeof(SpriteRenderer))]
 public class SimpleFrameLooper : MonoBehaviour
 {
@@ -18,14 +17,16 @@ public class SimpleFrameLooper : MonoBehaviour
     private float frameTimer;
     private int currentFrameIndex;
 
-    private CircleCollider2D circleCollider;
+    private CircleCollider2D circleCollider; // Assumindo que você usa CircleCollider
     
     void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
         if (adjustColliderToSprite)
         {
-            circleCollider = GetComponentInParent<CircleCollider2D>(); // Ou GetComponent<CircleCollider2D>();
+            // Tenta obter o colisor no próprio objeto, ou no pai.
+            // Para ser mais seguro em cenários de Boss, é melhor pegar no objeto pai.
+            circleCollider = GetComponentInParent<CircleCollider2D>(); 
         }
     }
 
@@ -77,6 +78,7 @@ public class SimpleFrameLooper : MonoBehaviour
                     enabled = false; // Para a animação
 
                     // OPCIONAL: Destruir o objeto após a animação única
+                    // Se for um VFX que deve sumir, descomente a linha abaixo e remova Destroy em outro lugar.
                     // Destroy(gameObject); 
                 }
             }
@@ -84,46 +86,33 @@ public class SimpleFrameLooper : MonoBehaviour
             // Atualiza o Sprite Renderer
             spriteRenderer.sprite = animationData.frames[currentFrameIndex];
 
-            // NO SimpleFrameLooper.cs
-
-void Update()
-{
-    // ... (lógica de avanço de frame) ...
-
-    if (frameTimer >= frameDuration)
-    {
-        // ... (atualiza o spriteRenderer.sprite) ...
-
-        if (adjustColliderToSprite && circleCollider != null)
-        {
-            Sprite currentSprite = spriteRenderer.sprite;
-
-            if (currentSprite != null)
+            // === LÓGICA DE AJUSTE DO COLISOR (APÓS A ATUALIZAÇÃO DO SPRITE) ===
+            if (adjustColliderToSprite && circleCollider != null)
             {
-                // 1. Calcula o raio base (Tamanho do sprite em unidades do mundo com a escala do objeto visual)
-                Vector2 boundsSize = spriteRenderer.bounds.size;
-                float radiusFromSprite = Mathf.Max(boundsSize.x, boundsSize.y) / 2f;
-                
-                // 2. O FATOR DE COMPENSAÇÃO: Pega a escala local do objeto que contém o COLISOR.
-                // Isso DESFAZ a multiplicação que o Transform do colisor aplica automaticamente.
-                float colliderLocalScaleX = circleCollider.transform.localScale.x;
-                
-                // Se a escala for 20, dividimos por 20 para normalizar o raio.
-                float finalRadius = radiusFromSprite / colliderLocalScaleX; 
+                Sprite currentSprite = spriteRenderer.sprite;
 
-                // 3. Aplica o raio compensado
-                circleCollider.radius = finalRadius; 
-                
-                // 4. Centraliza o Offset
-                // O offset deve ser o centro do bounds do sprite em coordenadas locais do colisor.
-                circleCollider.offset = (Vector2)(spriteRenderer.bounds.center - circleCollider.transform.position);
+                if (currentSprite != null)
+                {
+                    // 1. Calcula o raio base (Tamanho do sprite em unidades do mundo)
+                    // Usa a dimensão máxima (bounds size) para garantir que o círculo cubra o sprite
+                    Vector2 boundsSize = spriteRenderer.bounds.size;
+                    float radiusFromSprite = Mathf.Max(boundsSize.x, boundsSize.y) / 2f;
+                    
+                    // 2. COMPENSAÇÃO DE ESCALA LOCAL DO COLISOR
+                    // Se este script estiver no objeto VISUAL (filho) e o COLISOR estiver no PAI, 
+                    // o raio precisa ser normalizado pela escala do objeto pai (circleCollider.transform).
+                    float colliderLocalScaleX = circleCollider.transform.localScale.x;
+                    float finalRadius = radiusFromSprite / colliderLocalScaleX; 
 
-                // IMPORTANTE: Se o objeto que tem o SimpleFrameLooper for FILHO do objeto que tem o Collider, 
-                // você precisará de GetComponentInParent<CircleCollider2D>().
+                    // 3. Aplica o raio compensado
+                    circleCollider.radius = finalRadius; 
+                    
+                    // 4. Centraliza o Offset
+                    // Calcula o deslocamento do centro do bounds do sprite para o centro do transform do colisor.
+                    circleCollider.offset = (Vector2)(spriteRenderer.bounds.center - circleCollider.transform.position);
+                }
             }
-        }
-    }
-}
+            // === FIM LÓGICA DE AJUSTE DO COLISOR ===
         }
     }
 }

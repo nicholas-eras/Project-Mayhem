@@ -87,6 +87,10 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: 9fc718f40855b204fa94d10bb84ce7b7, type: 3}
     volume: 1
     pitch: 1
+  - name: Heal
+    clip: {fileID: 8300000, guid: 8a2e31247a1e99d4f9028cee8155dec8, type: 3}
+    volume: 1
+    pitch: 1
 --- !u!82 &7795498021497512607
 AudioSource:
   m_ObjectHideFlags: 0

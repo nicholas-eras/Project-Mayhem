@@ -7,7 +7,8 @@ public enum DamageType
     Standard,      // Dano normal que ativa i-frames.
     Unblockable,   // Dano de alta prioridade que IGNORA i-frames.
     Poison,        // (Exemplo futuro) Dano ao longo do tempo.
-    Fire           // (Exemplo futuro) Outro tipo de dano.
+    Fire,           // (Exemplo futuro) Outro tipo de dano.
+    DamageZone
 }
 
 public struct DamageInfo

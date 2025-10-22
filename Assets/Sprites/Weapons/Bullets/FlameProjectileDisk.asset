@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c427de977e13396459eeabf1ccbf1a4d, type: 3}
+  m_Name: FlameProjectileDisk
+  m_EditorClassIdentifier: 
+  frames:
+  - {fileID: 2000562152643509503, guid: c238eeda44a92754093133040b731108, type: 3}
+  - {fileID: 128726439238648608, guid: c238eeda44a92754093133040b731108, type: 3}
+  - {fileID: 2946755880823984252, guid: c238eeda44a92754093133040b731108, type: 3}
+  - {fileID: -6733729013969112403, guid: c238eeda44a92754093133040b731108, type: 3}
+  - {fileID: 4289559563969809980, guid: c238eeda44a92754093133040b731108, type: 3}
+  - {fileID: -8449130501287263091, guid: c238eeda44a92754093133040b731108, type: 3}
+  - {fileID: 2795892054950569078, guid: c238eeda44a92754093133040b731108, type: 3}
+  - {fileID: 4369822267195414870, guid: c238eeda44a92754093133040b731108, type: 3}
+  framesPerSecond: 16
+  loop: 1

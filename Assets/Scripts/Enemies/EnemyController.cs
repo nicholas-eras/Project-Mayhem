@@ -11,7 +11,7 @@ public class EnemyController : MonoBehaviour
 {
     [Header("Stats")]
     [SerializeField] private float moveSpeed = 4f;
-    [SerializeField] private int collisionDamage = 10;
+    [SerializeField] private float collisionDamage = 10f;
 
     [Tooltip("Distância mínima do jogador para que o inimigo pare de se mover.")]
     [SerializeField] private float stopDistance = 0f; // Distância de parada (o seu "enemydistance")
@@ -38,58 +38,125 @@ public class EnemyController : MonoBehaviour
 
     [Tooltip("A duração que o Prefab de Efeito deve persistir (Passado via Setup).")]
     [SerializeField] private float areaEffectDuration = 5f; // Duração para AreaEffectZone.cs
-
+    [Tooltip("A escala que o Prefab de Efeito de Morte deve ter quando instanciado.")]
+    [SerializeField] private float deathPayloadScale = 1.0f; // <-- NOVO CAMPO AQUI!
+    
     private Transform playerTarget;
+
+    [Header("Efeito de Status ATIVO (Aura)")] 
+    [Tooltip("O Prefab que contém o componente AreaEffectZone para ser carregado pelo inimigo.")]
+    [SerializeField] private GameObject activePayloadPrefab; // Prefab da Aura/Nuvem (ex: FireCloud)
+    
+    [Tooltip("A escala que o Prefab de Efeito deve ter quando instanciado.")]
+    [SerializeField] private float payloadScale = 1.0f; // Novo campo para escala
+    private GameObject currentActivePayloadInstance;
+
+    private SpriteRenderer enemyRenderer; 
+
+    [Tooltip("Marque se esta é uma parte do chefe principal que compartilha vida.")]
+    public bool isGreaterBoss = false; // <--- NOVA FLAG AQUI!
 
     void Start()
     {
         ChooseRandomTarget();
+        ActivateActivePayload();
+        enemyRenderer = GetComponent<SpriteRenderer>();
     }
 
     // Função de Morte Chamada pelo HealthSystem
     public void Die()
-{
-    // 1. Checa se o efeito de morte está ativo
-    if (deathEffect == DeathEffect.InstantiatePrefab)
     {
-        HandleInstantiateDeathPayload();
+        // 1. Checa se o efeito de morte está ativo
+        if (deathEffect == DeathEffect.InstantiatePrefab)
+        {
+            HandleInstantiateDeathPayload();
+        }
+        
+        // Finalmente, remove o objeto do inimigo
+        Destroy(gameObject);
     }
-    
-    // 2. Loga a destruição final
-    Debug.Log($"[EC] {gameObject.name}: Destruicao final."); 
 
-    // Finalmente, remove o objeto do inimigo
-    Destroy(gameObject);
-}
-    
     private void HandleInstantiateDeathPayload()
-{
-    if (deathPayloadPrefab == null)
     {
-        Debug.LogWarning($"[EC] {gameObject.name} FALHA: Death Payload Prefab esta nulo.");
-        return;
-    }
-    
-    // NOVO LOG: Confirma a instanciação
-    Debug.Log($"[EC] SUCESSO: Instanciando payload '{deathPayloadPrefab.name}' em {transform.position}"); 
+        if (deathPayloadPrefab == null)
+        {
+            Debug.LogWarning($"[EC] {gameObject.name} FALHA: Death Payload Prefab esta nulo.");
+            return;
+        }
 
-    // 1. Instancia o Prefab
-    GameObject payloadGO = Instantiate(deathPayloadPrefab, transform.position, Quaternion.identity);
+        // 1. Instancia o Prefab
+        GameObject payloadGO = Instantiate(deathPayloadPrefab, transform.position, Quaternion.identity);
+        payloadGO.transform.localScale = Vector3.one * deathPayloadScale;
+        
+        // 2. Tenta configurar o Prefab como uma Zona de Efeito
+        AreaEffectZone effectZone = payloadGO.GetComponent<AreaEffectZone>();
 
-    // 2. Tenta configurar o Prefab como uma Zona de Efeito
-    AreaEffectZone effectZone = payloadGO.GetComponent<AreaEffectZone>();
-    
-    if (effectZone != null)
-    {
-        effectZone.Setup(areaEffectDuration); 
-        // NOVO LOG: Confirma o Setup
-        Debug.Log($"[EC] Setup da AreaEffectZone concluido. Duracao: {areaEffectDuration}s."); 
+        if (effectZone != null)
+        {
+            effectZone.Setup(areaEffectDuration);
+            // NOVO LOG: Confirma o Setup
+        }
+        else
+        {
+            Debug.LogWarning($"[EC] Payload instanciado, mas nao contem AreaEffectZone. Setup ignorado.");
+        }
     }
-    else
+    private void ActivateActivePayload()
     {
-        Debug.LogWarning($"[EC] Payload instanciado, mas nao contem AreaEffectZone. Setup ignorado.");
+        if (activePayloadPrefab == null) return;
+        if (currentActivePayloadInstance != null) return;
+        
+        // 1. Instancia o prefab de efeito (que contém AreaEffectZone e Collider) como FILHO
+        // Isso garante que ele se mova com o inimigo.
+        GameObject payloadGO = Instantiate(activePayloadPrefab, transform.position, Quaternion.identity, transform);
+        currentActivePayloadInstance = payloadGO;
+        
+        // 2. Ajusta a escala do prefab
+        payloadGO.transform.localScale = Vector3.one * payloadScale;
+
+        // === GARANTIA DE ORDEM DE RENDERIZAÇÃO (FRENTE) ===
+        // 1. Obtém todos os Renderers no payload (pode ser Sprite ou ParticleSystem)
+        Renderer[] payloadRenderers = payloadGO.GetComponentsInChildren<Renderer>();
+        
+        // 2. Garante que o inimigo tem um renderer para comparação
+        if (enemyRenderer == null) 
+        {
+            enemyRenderer = GetComponent<SpriteRenderer>(); 
+        }
+
+        if (enemyRenderer != null)
+        {
+            foreach (Renderer payloadRenderer in payloadRenderers)
+            {
+                // Copia a Sorting Layer
+                payloadRenderer.sortingLayerID = enemyRenderer.sortingLayerID;
+                
+                // Define uma ordem maior para garantir que seja desenhado na frente (ex: +10)
+                payloadRenderer.sortingOrder = enemyRenderer.sortingOrder + 10; 
+            }
+        }
+        else
+        {
+            // Fallback (Se não for sprite, ajuste o Z local)
+            payloadGO.transform.localPosition = new Vector3(0, 0, -0.1f);
+        }
+        // ==================================================
+
+        // 3. Garante que o AreaEffectZone não se autodestrua
+        // O AreaEffectZone deve ser modificado para IGNORAR a autodestruição se for filho.
+        // Ou, você pode forçar o cloudDuration no AreaEffectZone a um valor muito alto/negativo via Setup:
+
+        AreaEffectZone effectZone = payloadGO.GetComponent<AreaEffectZone>();
+        if (effectZone != null)
+        {
+            // Chamando Setup para definir a duração para um valor alto (ex: 9999) 
+            // ou usando uma sobrecarga que diz 'nao destruir'.
+            // Vamos usar Setup(9999f) para simular uma duracao "infinita" enquanto o inimigo vive.
+            effectZone.Setup(9999f); 
+        }
+        
+        Debug.Log($"[EC] Payload ativo '{activePayloadPrefab.name}' hospedado com escala: {payloadScale}.");
     }
-}
     void Update()
     {
         if (playerTarget == null) return;

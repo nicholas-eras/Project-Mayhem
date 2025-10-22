@@ -11,6 +11,7 @@ public class Projectile : MonoBehaviour
     [Header("Configuração de Veneno")]
     [Tooltip("Defina a duração e o dano por tick se este projétil for venenoso.")]
     [SerializeField] private bool isPoisonous = false; // Flag para indicar que aplica veneno
+    [SerializeField] private bool isFlames = false; // Flag para indicar que aplica veneno
     [SerializeField] private float poisonTickDamage = 2f;
     [SerializeField] private float poisonDuration = 5f;
     [SerializeField] private float poisonTickInterval = 1f;
@@ -42,7 +43,10 @@ public class Projectile : MonoBehaviour
         {
             rb.velocity = transform.right * speed;
         }
-        Destroy(gameObject, lifetime);
+        if (lifetime > 0f)
+        {
+            Destroy(gameObject, lifetime);
+        }
     }
 
     // FUNÇÃO DE COLISÃO
@@ -70,26 +74,47 @@ public class Projectile : MonoBehaviour
 
             if (playerHealth != null)
             {
+                // CRIA O PACOTE DE DANO DE IMPACTO ANTES DE TUDO
+                DamageInfo impactDamagePacket = new DamageInfo(damageAmount, DamageType.Standard);
+
+                bool statusApplied = false;
+
                 // VERIFICA SE DEVE APLICAR O EFEITO DE VENENO
                 if (isPoisonous)
                 {
                     PoisonEffect poisonEffect = other.GetComponent<PoisonEffect>();
                     if (poisonEffect != null)
                     {
-                        // Se o Player tem o componente, chama o ApplyPoison
+                        // === CORREÇÃO 1: APLICAR DANO DE IMPACTO AQUI ===
+                        playerHealth.TakeDamage(impactDamagePacket); 
+                        // === FIM CORREÇÃO 1 ===
+                        
                         poisonEffect.ApplyPoison(poisonTickDamage, poisonDuration, poisonTickInterval);
-                    }
-                    else
-                    {
-                        // Se o Player deveria pegar veneno mas não tem o componente, causa dano normal
-                        DamageInfo damagePacket = new DamageInfo(damageAmount, DamageType.Standard);
-                        playerHealth.TakeDamage(damagePacket);
+                        statusApplied = true;
                     }
                 }
-                else // Se não for venenoso, aplica dano STANDARD
+                // VERIFICA SE DEVE APLICAR O EFEITO DE FOGO
+                else if (isFlames)
                 {
-                    DamageInfo damagePacket = new DamageInfo(damageAmount, DamageType.Standard);
-                    playerHealth.TakeDamage(damagePacket);
+                    // ATENÇÃO: O nome do componente aqui ainda é 'poisonEffect' - corrija para 'fireEffect' para clareza, se necessário.
+                    FireEffect fireEffect = other.GetComponent<FireEffect>(); 
+                    
+                    if (fireEffect != null)
+                    {
+                        // === CORREÇÃO 2: APLICAR DANO DE IMPACTO AQUI ===
+                        playerHealth.TakeDamage(impactDamagePacket);
+                        // === FIM CORREÇÃO 2 ===
+
+                        fireEffect.ApplyFire(poisonTickDamage, poisonDuration, poisonTickInterval);
+                        statusApplied = true;
+                    }
+                }
+
+                // SE NENHUM STATUS FOI APLICADO (projétil normal), aplica o dano STANDARD.
+                if (!statusApplied) 
+                {
+                    // Este é o bloco ORIGINAL (que agora é o fallback)
+                    playerHealth.TakeDamage(impactDamagePacket);
                 }
             }
 

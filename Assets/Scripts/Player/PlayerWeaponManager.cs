@@ -94,10 +94,10 @@ public class PlayerWeaponManager : MonoBehaviour
     }
     
     // 1. AUMENTO DE DANO
-    public void IncreaseDamageMultiplier(float percentage)
+    public void IncreaseDamage(float percentage)
     {
         // O valor 'percentage' é o multiplicador de aumento (ex: 0.1 para 10%).
-        float multiplier = 1f + percentage; 
+        float multiplier = percentage; 
 
         foreach (GameObject weaponGO in equippedWeapons)
         {
@@ -107,7 +107,7 @@ public class PlayerWeaponManager : MonoBehaviour
             if (weapon != null && weapon.weaponData != null)
             {
                 // Aplica o multiplicador ao campo 'damage' do WeaponData (que deve ser a cópia clonada).
-                weapon.weaponData.damage *= multiplier;                
+                weapon.weaponData.damage += multiplier;                
             }
         }
     }

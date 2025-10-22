@@ -186,7 +186,7 @@ public class UpgradeManager : MonoBehaviour
                 break;
 
             case UpgradeType.IncreaseDamage:
-                playerWeaponManager.IncreaseDamageMultiplier(upgrade.value);
+                playerWeaponManager.IncreaseDamage(upgrade.value);
                 break;
 
             case UpgradeType.IncreaseRegen:

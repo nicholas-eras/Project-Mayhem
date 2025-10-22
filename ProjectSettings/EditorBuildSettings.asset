@@ -12,9 +12,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Maps/Cyberpunk/Cyberpunk.unity
     guid: 2cda990e2423bbf4892e6590ba056729
   - enabled: 1
-    path: Assets/Scenes/Maps/Volcano/Jungle.unity
-    guid: 681cabdaa63743a4b9f20b8ec14571ef
+    path: Assets/Scenes/Maps/Jungle/Jungle.unity
+    guid: 0b274166ffb3be540a358f54f32353c2
   - enabled: 1
     path: Assets/Scenes/Maps/Volcano/Volcano.unity
-    guid: fd4c0abf69c70134b80fcb066a81ca74
+    guid: 681cabdaa63743a4b9f20b8ec14571ef
   m_configObjects: {}

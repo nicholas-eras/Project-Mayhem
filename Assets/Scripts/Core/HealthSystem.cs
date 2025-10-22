@@ -31,12 +31,30 @@ public class HealthSystem : MonoBehaviour
     public UnityEvent OnDeath;
 
     private bool isPlayer = false;
-    
+    private PlayerStatusEffects playerStatusEffects; 
+
+    [Header("Configuração de Boss")]
+    [Tooltip("Se for True, a vida será vinculada ao BossHealthLinker.")]
+    [SerializeField] private bool isGreaterBossPart = false; // Flag para partes do Greater Boss
+    private BossHealthLinker healthLinker; // Referência ao Linker Central
+
     void Awake()
     {
-        currentHealth = MaxHealth;
+        // Se for uma parte do Greater Boss, a vida inicial é gerenciada pelo Linker
+        if (!isGreaterBossPart)
+        {
+            currentHealth = MaxHealth;
+        }
+        else
+        {
+             // Encontra o linker no Awake (deve estar na cena)
+            healthLinker = FindObjectOfType<BossHealthLinker>();
+            if (healthLinker == null)
+            {
+                Debug.LogError("Greater Boss Part precisa de um BossHealthLinker na cena!");
+            }
+        }
     }
-
     void Start()
     {
         if (gameObject.CompareTag("Player"))
@@ -48,9 +66,9 @@ public class HealthSystem : MonoBehaviour
         OnHealthChanged?.Invoke(currentHealth, MaxHealth);
 
         if (canRegen)
-            {
-                StartCoroutine(RegenRoutine());
-            }
+        {
+            StartCoroutine(RegenRoutine());
+        }
             
         // --- FIX 1: SUBSCRIBE USING THE SINGLETON INSTANCE ---
         // Access the OnShopClosed event via UpgradeManager.Instance
@@ -64,6 +82,13 @@ public class HealthSystem : MonoBehaviour
         if (controller != null && controller.isBoss)
         {
             SetupBossHealthBar(controller);
+        }
+
+        // Se for parte do Boss, a vida inicial é a vida atual do linker
+        if (isGreaterBossPart && healthLinker != null)
+        {
+            currentHealth = healthLinker.CurrentHealth;
+            OnHealthChanged?.Invoke(currentHealth, MaxHealth);
         }
     }
 
@@ -96,6 +121,11 @@ public class HealthSystem : MonoBehaviour
     {
         currentHealth = MaxHealth;
         OnHealthChanged?.Invoke(currentHealth, MaxHealth);
+        // 2. Limpa os Efeitos de Status Negativos
+        if (playerStatusEffects != null)
+        {
+            playerStatusEffects.CureAllStatusEffects(); // <--- CHAMADA ADICIONADA AQUI
+        }
     }
     
     public void Heal(int amount)
@@ -136,7 +166,7 @@ public class HealthSystem : MonoBehaviour
         {
             // Permite que o dano UNBLOCKABLE e de VENENO passem pelo cooldown.
             // Se for STANDARD, o dano é bloqueado (return).
-            if (info.type != DamageType.Unblockable && info.type != DamageType.Poison)
+            if (info.type != DamageType.Unblockable && info.type != DamageType.Poison && info.type != DamageType.Fire)
             {
                 return;
             }
@@ -155,14 +185,22 @@ public class HealthSystem : MonoBehaviour
             AudioManager.Instance.PlaySFX(takeDamageSoundName);
         }
 
+        float damageToApply = info.damageAmount;
+
         if (info.type == DamageType.Poison && currentHealth - info.damageAmount < 1)
         {
             currentHealth = 1;
         }
+        else if (isGreaterBossPart && healthLinker != null)
+        {
+            healthLinker.TakeDamage(damageToApply);
+            // Atualiza a vida local apenas para a UI
+            currentHealth = healthLinker.CurrentHealth;
+        }                         
         else
         {
             currentHealth -= info.damageAmount;
-            currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);    
+            currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);
         }        
 
         // Atualiza a UI
@@ -173,7 +211,7 @@ public class HealthSystem : MonoBehaviour
         // O cooldown de invulnerabilidade é aplicado APENAS se:
         // a) Houver uma fonte (para rastreá-la).
         // b) O dano NÃO for um tick de veneno (pois o veneno não deve ser bloqueado por i-frames).
-        if (hasDamageSource && info.type != DamageType.Poison)
+        if (hasDamageSource && info.type != DamageType.Poison && info.type != DamageType.Fire)
         {
             StartCoroutine(AddSourceToCooldown(damageSource));
         }
@@ -192,28 +230,41 @@ public class HealthSystem : MonoBehaviour
         sourcesOnCooldown.Remove(source);
     }
 
-   private void Die()
-{
-    OnDeath?.Invoke();
-    
-    // 1. Loga que a morte está ocorrendo
-    Debug.Log($"[HS] {gameObject.name} (HP 0): Tentando iniciar a morte."); 
-    
-    EnemyController enemyController = GetComponent<EnemyController>();
-    
-    if (enemyController != null)
+    private void Die()
     {
-        // 2. Loga se encontrou o controlador
-        Debug.Log("[HS] Chamando EnemyController.Die() para liberar payload.");
-        enemyController.Die(); 
+        OnDeath?.Invoke();
+
+        // 1. Loga que a morte está ocorrendo
+        Debug.Log($"[HS] {gameObject.name} (HP 0): Tentando iniciar a morte.");
+
+        EnemyController enemyController = GetComponent<EnemyController>();
+
+        if (enemyController != null)
+        {
+            // 2. Loga se encontrou o controlador
+            Debug.Log("[HS] Chamando EnemyController.Die() para liberar payload.");
+            enemyController.Die();
+        }
+        else
+        {
+            // 3. Loga se destruiu diretamente (Player, etc.)
+            Debug.Log("[HS] Nao ha Controller. Destruicao direta.");
+            Destroy(gameObject);
+        }
     }
-    else
+
+    public void Heal(float amount)
     {
-        // 3. Loga se destruiu diretamente (Player, etc.)
-        Debug.Log("[HS] Nao ha Controller. Destruicao direta.");
-        Destroy(gameObject);
+        currentHealth += amount;
+        currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);
+        OnHealthChanged?.Invoke(currentHealth, MaxHealth);
     }
-}
+
+    public void HealFull()
+    {
+        currentHealth = MaxHealth;
+        OnHealthChanged?.Invoke(currentHealth, MaxHealth);
+    }
     
     // ========================================================
     // FUNÇÕES DE UPGRADE CHAMADAS PELO UPGRADEMANAGER

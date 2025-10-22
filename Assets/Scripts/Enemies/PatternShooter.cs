@@ -2,18 +2,18 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
 
-// Definição dos padrões geométricos
 public enum ShootingPattern
 {
-    TowardsTarget, // 0: Tiro único (Padrão)
-    Spread_Fan,    // 1: Leque (espalha para frente)
-    Cross_Plus,    // 2: Quatro direções fixas (+ forma)
-    Cross_X,       // 3: Quatro diagonais fixas (X forma)
-    Circle_360,    // 4: Todos os 360 graus (Bullet Hell)
-    Spiral_Time,   // 5: Espiral periódica ou infinita
-    Column_Wall,   // 6: Coluna com abertura de escape (Aleatório)
-    Rotating_Cross_Column, // 7: Cruz de Colunas Rotatória (Escudo Estático)
-    Random_Selection // 8: Escolhe aleatoriamente
+    TowardsTarget,
+    Spread_Fan,
+    Cross_Plus,
+    Cross_X,
+    Cross_Swap,        // NOVO: Alterna entre + e X
+    Circle_360,
+    Spiral_Time,
+    Column_Wall,
+    Rotating_Cross_Column,
+    Random_Selection
 }
 
 public class PatternShooter : MonoBehaviour
@@ -22,49 +22,38 @@ public class PatternShooter : MonoBehaviour
     [Tooltip("O padrão de tiro a ser usado (ou Random_Selection).")]
     [SerializeField] private ShootingPattern patternType = ShootingPattern.TowardsTarget;
     [SerializeField] private List<ShootingPattern> randomPatterns;
-
-    // --- Configurações Comuns de Burst ---
-    [Header("2. Configuração de Burst/Geometria")]
-    [Tooltip("Número de projéteis disparados (Para Cross, Circle, Fan).")]
-    [SerializeField] private int burstCount = 8;
     
-    // --- Configurações de Spread ---
-    [Tooltip("Ângulo total do leque (apenas para Spread/Fan).")]
+    [Header("1.1 Controle de Random Selection")]
+    [Tooltip("Tempo (segundos) que o padrão aleatório permanece antes de sortear outro.")]
+    [SerializeField] private float patternSwitchTime = 5f;
+    [Tooltip("Se true, cada padrão sorteado dura patternSwitchTime. Se false, sorteia a cada disparo.")]
+    [SerializeField] private bool usePatternSwitchTimer = true;
+
+    [Header("2. Configuração de Burst/Geometria")]
+    [SerializeField] private int burstCount = 8;
     [SerializeField] private float spreadAngle = 90f;
 
-    // --- Configurações de Colunas ---
     [Header("3. Configuração de Colunas & Cruz")]
-    [Tooltip("Número de projéteis em uma única coluna/braço.")]
     [SerializeField] private int totalProjectilesInColumn = 7;
-    [Tooltip("Espaçamento (World Units) entre projéteis na coluna.")]
     [SerializeField] private float columnSpacing = 0.8f;
-    [Tooltip("Se o buraco de fuga na coluna deve ser randomizado a cada tiro.")]
     [SerializeField] private bool randomizeEscapeIndex = true;
     [Range(0, 6)]
     [SerializeField] private int fixedEscapeIndex = 3; 
 
-    // --- Configurações de Espiral/Periódico ---
     [Header("4. Configuração de Espiral/Ciclo")]
-    [Tooltip("Se for infinito, durará até que o inimigo seja destruído.")]
     [SerializeField] private bool infiniteSpiral = false;
-    [Tooltip("Número de voltas completas (360º) para o ciclo não infinito.")]
     [Range(1, 10)]
     [SerializeField] private int requiredRotations = 1;
-    [Tooltip("Intervalo de tempo entre cada tiro da Espiral.")]
     [SerializeField] private float spiralInterval = 0.1f;
-    [Tooltip("Passo de rotação (graus) a cada tiro.")]
     [SerializeField] private float spiralRotationStep = 15f;
     
-    // --- Configurações de Cruz Rotatória (Escudo) ---
     [Header("5. Configuração do Escudo Rotatório")]
-    [Tooltip("O objeto pai dos escudos que realiza a rotação (deve ter ShieldRotator.cs).")]
     [SerializeField] private Transform shieldRotationParent; 
     
     [Header("6. Referências")]
     [SerializeField] private EnemyShooter enemyShooter;
     [SerializeField] private Transform firePoint;
 
-    // Variáveis de estado
     private Transform playerTarget;
     private float projectileDamage;
     private float projectileSpeed;
@@ -72,8 +61,16 @@ public class PatternShooter : MonoBehaviour
     
     public Coroutine currentPatternRoutine { get; private set; }
     private float spiralCurrentAngle = 0f;
+    private bool shieldIsActive = false;
+    private List<GameObject> activeShieldProjectiles = new List<GameObject>();
     
-    // =================================================================
+    // Controle de troca de padrão aleatório
+    private ShootingPattern currentRandomPattern;
+    private float patternSwitchTimer = 0f;
+    private bool needsNewPattern = true;
+    
+    // Controle de alternância Cross_Swap
+    private bool crossSwapIsPlus = true;
 
     void Start()
     {
@@ -85,22 +82,52 @@ public class PatternShooter : MonoBehaviour
             Debug.LogError("PatternShooter precisa de EnemyShooter e FirePoint configurados!", this);
             enabled = false;
         }
+        
+        patternSwitchTimer = patternSwitchTime;
     }
-    
-    /// <summary>
-    /// Inicia o padrão de tiro principal ou aleatório.
-    /// Chamado pelo EnemyShooter.
-    /// </summary>
+
+    void Update()
+    {
+        if (patternType == ShootingPattern.Random_Selection && usePatternSwitchTimer)
+        {
+            patternSwitchTimer -= Time.deltaTime;
+            
+            if (patternSwitchTimer <= 0f)
+            {
+                needsNewPattern = true;
+                patternSwitchTimer = patternSwitchTime;
+                Debug.Log("[PatternShooter] ⏰ Tempo de padrão expirou. Próximo disparo sorteará novo padrão.", this);
+            }
+        }
+    }
+
+    private void OnDisable()
+    {
+        ClearActiveShield();
+    }
+
+    private void OnDestroy()
+    {
+        ClearActiveShield();
+    }
+
+    private float GetProjectileLifetime(ShootingPattern pattern)
+    {
+        if (pattern == ShootingPattern.Rotating_Cross_Column)
+        {
+            return -1f;
+        }
+        return projectileLifetime;
+    }
+
     public void ShootPattern(float damage, float speed, float lifetime)
     {
         projectileDamage = damage;
         projectileSpeed = speed;
         projectileLifetime = lifetime;
 
-        // Se uma corrotina estiver rodando (e este nao for o primeiro tiro), ignore.
         if (currentPatternRoutine != null && patternType == ShootingPattern.Spiral_Time) return;
 
-        // Limpa a rotina anterior se for um burst que se sobrepõe
         if (currentPatternRoutine != null)
         {
             StopCoroutine(currentPatternRoutine);
@@ -108,29 +135,57 @@ public class PatternShooter : MonoBehaviour
         }
 
         ShootingPattern finalPattern = patternType;
-        
+
         if (finalPattern == ShootingPattern.Random_Selection && randomPatterns.Count > 0)
         {
-            finalPattern = randomPatterns[Random.Range(0, randomPatterns.Count)];
+            if (usePatternSwitchTimer)
+            {
+                if (needsNewPattern)
+                {
+                    ShootingPattern oldPattern = currentRandomPattern;
+                    currentRandomPattern = randomPatterns[Random.Range(0, randomPatterns.Count)];
+                    needsNewPattern = false;
+                    
+                    Debug.Log($"[PatternShooter] 🎲 Novo padrão sorteado: {currentRandomPattern} (durará {patternSwitchTime}s)", this);
+                    
+                    if (oldPattern == ShootingPattern.Rotating_Cross_Column && 
+                        currentRandomPattern != ShootingPattern.Rotating_Cross_Column && 
+                        shieldIsActive)
+                    {
+                        ClearActiveShield();
+                        Debug.Log("[PatternShooter] 🔄 Padrão mudou. Escudo anterior removido.", this);
+                    }
+                }
+                
+                finalPattern = currentRandomPattern;
+            }
+            else
+            {
+                finalPattern = randomPatterns[Random.Range(0, randomPatterns.Count)];
+                
+                if (finalPattern != ShootingPattern.Rotating_Cross_Column && shieldIsActive)
+                {
+                    ClearActiveShield();
+                    Debug.Log("[PatternShooter] 🔄 Padrão mudou. Escudo anterior removido.", this);
+                }
+            }
         }
         
-        // Inicia Corrotina ou Burst Instantâneo
+        float finalLifetime = GetProjectileLifetime(finalPattern);
+        
         if (finalPattern == ShootingPattern.Spiral_Time)
         {
             currentPatternRoutine = StartCoroutine(ShootSpiralRoutine());
         }
         else
         {
-            ShootBurst(finalPattern);
+            ShootBurst(finalPattern, finalLifetime);
         }
     }
     
-    // =================================================================
-    // MÉTODOS DE BURST INSTANTÂNEO
-    // =================================================================
-
-    private void ShootBurst(ShootingPattern pattern)
+    private void ShootBurst(ShootingPattern pattern, float lifetime)
     {
+        projectileLifetime = lifetime;
         switch (pattern)
         {
             case ShootingPattern.TowardsTarget:
@@ -144,6 +199,9 @@ public class PatternShooter : MonoBehaviour
                 break;
             case ShootingPattern.Cross_X:
                 ShootCross(45f);
+                break;
+            case ShootingPattern.Cross_Swap:
+                ShootCrossSwap();
                 break;
             case ShootingPattern.Circle_360:
                 ShootCircle360();
@@ -170,7 +228,6 @@ public class PatternShooter : MonoBehaviour
         enemyShooter.InstantiateProjectile(firePoint.position, rotation, projectileDamage, projectileSpeed, projectileLifetime);
     }
     
-    // Padrão: Leque (Fan)
     private void ShootSpreadFan()
     {
         float startAngle = GetAngleToTarget() - (spreadAngle / 2f);
@@ -183,7 +240,6 @@ public class PatternShooter : MonoBehaviour
         }
     }
 
-    // Padrão: Coluna com Abertura (Wall)
     private void ShootColumnWall()
     {
         int finalEscapeIndex = randomizeEscapeIndex ? Random.Range(0, totalProjectilesInColumn) : fixedEscapeIndex;
@@ -205,64 +261,71 @@ public class PatternShooter : MonoBehaviour
             enemyShooter.InstantiateProjectile(spawnPosition, forwardRotation, projectileDamage, projectileSpeed, projectileLifetime);
         }
     }
-    
-    // Padrão: Cruz Rotatória de Colunas (Escudo Estático)
+
     private void ShootRotatingCrossColumn()
     {
-        Vector3 bossCenter = firePoint.position;
-        
-        // A rotação do padrão é baseada na rotação ATUAL do objeto pai
-        Quaternion crossRotation = shieldRotationParent != null ? shieldRotationParent.rotation : Quaternion.identity;
-
-        if (shieldRotationParent == null)
+        if (shieldIsActive)
         {
-            Debug.LogError("Shield Rotation Parent não referenciado. Padrão Rotatório falhou.");
+            Debug.Log("[PatternShooter] ⚠️ Escudo já ativo. Ignorando disparo.", this);
             return;
         }
 
-        // As 4 direções da Cruz: 0, 90, 180, 270 graus
+        if (shieldRotationParent == null)
+        {
+            Debug.LogError("[PatternShooter] shieldRotationParent não configurado!", this);
+            return;
+        }
+
+        Vector3 bossCenter = firePoint.position;
+        Quaternion crossRotation = shieldRotationParent.rotation;
+
         for (int arm = 0; arm < 4; arm++)
         {
-            float armAngle = (arm * 90f);
-            
-            // Rotação do Braço: Rotação fixa (0/90/180/270) + Rotação acumulada do Parent
+            float armAngle = arm * 90f;
             Quaternion armRotation = crossRotation * Quaternion.Euler(0, 0, armAngle);
-            
-            int finalEscapeIndex = Random.Range(0, totalProjectilesInColumn);
-            
-            Vector3 perpendicularDirection = armRotation * Vector3.up; 
-            
-            float totalSpacing = (totalProjectilesInColumn - 1) * columnSpacing;
-            float halfSpawnLength = totalSpacing / 2f;
+            Vector3 perpendicularDirection = armRotation * Vector3.up;
 
-            for (int i = 0; i < totalProjectilesInColumn; i++)
+            for (int i = 1; i < totalProjectilesInColumn; i++)
             {
-                if (i == finalEscapeIndex) continue; 
 
-                float currentOffset = (i * columnSpacing) - halfSpawnLength;
-                
-                // Posição de Spawn: Centro do Boss + (Offset Perpendicular)
+                float currentOffset = i * columnSpacing;
                 Vector3 spawnPosition = bossCenter + (perpendicularDirection * currentOffset);
 
-                // Instancia com VELOCIDADE ZERO e usa a versão que RETORNA o GameObject
                 GameObject shieldGO = enemyShooter.InstantiateProjectileGo(
-                    spawnPosition, 
-                    armRotation, 
-                    projectileDamage, 
-                    0f, // VELOCIDADE ZERO: Projétil não se move para a frente
+                    spawnPosition,
+                    armRotation,
+                    projectileDamage,
+                    0f,
                     projectileLifetime
                 );
-                
-                // CRUCIAL: TORNAR O PROJÉTIL FILHO DO OBJETO QUE ESTÁ GIRANDO
+
                 if (shieldGO != null)
                 {
-                     shieldGO.transform.SetParent(shieldRotationParent);
+                    shieldGO.transform.SetParent(shieldRotationParent);
+                    activeShieldProjectiles.Add(shieldGO);
                 }
             }
         }
+        
+        shieldIsActive = true;
+        Debug.Log($"[PatternShooter] 🛡️ Escudo criado com {activeShieldProjectiles.Count} projéteis!", this);
     }
 
-    // Padrão: Cruz Fixa (+ ou X)
+    public void ClearActiveShield()
+    {
+        if (!shieldIsActive && activeShieldProjectiles.Count == 0) return;
+        
+        Debug.Log($"[PatternShooter] 🗑️ Destruindo {activeShieldProjectiles.Count} projéteis do escudo.", this);
+        
+        foreach (GameObject proj in activeShieldProjectiles)
+        {
+            if (proj != null) Destroy(proj);
+        }
+        
+        activeShieldProjectiles.Clear();
+        shieldIsActive = false;
+    }
+
     private void ShootCross(float initialOffset)
     {
         for (int i = 0; i < burstCount; i++)
@@ -272,7 +335,18 @@ public class PatternShooter : MonoBehaviour
         }
     }
     
-    // Padrão: Círculo 360 (Bullet Hell)
+    private void ShootCrossSwap()
+    {
+        // Alterna entre + (0°) e X (45°)
+        float offset = crossSwapIsPlus ? 0f : 45f;
+        ShootCross(offset);
+        
+        // Inverte para o próximo disparo
+        crossSwapIsPlus = !crossSwapIsPlus;
+        
+        Debug.Log($"[PatternShooter] ⚔️ Cross_Swap disparado: {(offset == 0f ? "+" : "X")}. Próximo será: {(crossSwapIsPlus ? "+" : "X")}", this);
+    }
+    
     private void ShootCircle360()
     {
         float angleStep = 360f / burstCount;
@@ -285,23 +359,15 @@ public class PatternShooter : MonoBehaviour
         }
     }
 
-
-    // =================================================================
-    // MÉTODOS DE CORROTINA (Espiral Periódica)
-    // =================================================================
-
     private IEnumerator ShootSpiralRoutine()
     {
         float totalRotationRequired = requiredRotations * 360f;
         float currentRotation = 0f;
-        
         bool runInfinite = infiniteSpiral; 
-
         spiralCurrentAngle = GetAngleToTarget(); 
 
         while (runInfinite || currentRotation < totalRotationRequired)
         {
-            // O passo de rotação é definido por spiralRotationStep (CORRIGIDO)
             spiralCurrentAngle += spiralRotationStep;
             
             if (!runInfinite) 
@@ -313,7 +379,6 @@ public class PatternShooter : MonoBehaviour
             yield return new WaitForSeconds(spiralInterval);
         }
 
-        // FIM DO CICLO: CEDE O CONTROLE DE VOLTA
         currentPatternRoutine = null;
     }
 }

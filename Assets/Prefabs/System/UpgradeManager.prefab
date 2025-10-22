@@ -60,6 +60,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ae68b28bb043fb34badcded1e71dc29f, type: 2}
   - {fileID: 11400000, guid: 7ff24a4168fdf9147834f53f25f93afc, type: 2}
   - {fileID: 11400000, guid: 43994a8822167c64e85d35ef04db7662, type: 2}
+  - {fileID: 11400000, guid: 8fea8aa0970e9954696e7b3c245dc9e0, type: 2}
   optionsToShow: 4
   playerStatusUI: {fileID: 0}
   movementInputScript: {fileID: 0}
