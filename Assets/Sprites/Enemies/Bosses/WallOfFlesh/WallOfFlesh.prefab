@@ -785,7 +785,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94833a39658e2134589a76504ddff8f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  initialTotalHealth: 5000
+  initialTotalHealth: 2000
   OnBossDefeated:
     m_PersistentCalls:
       m_Calls: []

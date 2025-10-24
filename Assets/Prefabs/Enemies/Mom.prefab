@@ -134,6 +134,10 @@ MonoBehaviour:
   deathEffect: 0
   deathPayloadPrefab: {fileID: 0}
   areaEffectDuration: 5
+  deathPayloadScale: 1
+  activePayloadPrefab: {fileID: 0}
+  payloadScale: 1
+  isGreaterBoss: 0
 --- !u!114 &8142928547277015522
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -168,6 +172,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  isGreaterBossPart: 0
 --- !u!114 &949095876173313355
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -206,8 +211,9 @@ MonoBehaviour:
   projectileDamage: 4
   projectileSpeed: 5
   projectileLifetime: 5
-  fireRate: 1.5
+  fireRateInterval: 1
   shootingRange: 13
+  playerTarget: {fileID: 0}
 --- !u!114 &-7298323918159171079
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -220,8 +226,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02ffd1fc219d63a439bd416c1ec4c248, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  patternType: 8
+  patternType: 9
   randomPatterns: 05000000060000000200000007000000
+  patternSwitchTime: 5
+  usePatternSwitchTimer: 1
   burstCount: 12
   spreadAngle: 45
   totalProjectilesInColumn: 12

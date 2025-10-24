@@ -2139,6 +2139,14 @@ PrefabInstance:
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
       objectReference: {fileID: 1139306011}
+    - target: {fileID: 1212173956, guid: fc42023f7bb5867479f774c167634e35, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1212173956, guid: fc42023f7bb5867479f774c167634e35, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1849397679738379185, guid: fc42023f7bb5867479f774c167634e35, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -2226,6 +2234,14 @@ PrefabInstance:
     - target: {fileID: 1849397679738379189, guid: fc42023f7bb5867479f774c167634e35, type: 3}
       propertyPath: m_Name
       value: Canvas
+      objectReference: {fileID: 0}
+    - target: {fileID: 4933630775047566436, guid: fc42023f7bb5867479f774c167634e35, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1139306011}
+    - target: {fileID: 4933630775047566436, guid: fc42023f7bb5867479f774c167634e35, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: AtualizarOpcoes
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: fc42023f7bb5867479f774c167634e35, type: 3}
