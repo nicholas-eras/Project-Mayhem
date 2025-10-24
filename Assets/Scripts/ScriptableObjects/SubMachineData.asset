@@ -13,8 +13,12 @@ MonoBehaviour:
   m_Name: SubMachineData
   m_EditorClassIdentifier: 
   weaponName: SMG
-  damage: 1
-  fireRate: 8
+  damage: 0.5
+  fireRateInterval: 8
   range: 4
   projectilePrefab: {fileID: 7887839903795761724, guid: f3a6a02dba317874fafc5a6ebd58f8c0, type: 3}
+  fireType: 0
+  spreadAngle: 30
+  doubleShotSeparation: 0.5
+  laserLength: 20
   shootSoundName: ShootSMG

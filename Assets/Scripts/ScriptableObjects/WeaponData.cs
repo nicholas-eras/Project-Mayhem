@@ -17,7 +17,7 @@ public class WeaponData : ScriptableObject
 
     [Header("Stats")]
     public float damage = 5f;
-    public float fireRate = 2f; // Tiros por segundo
+    public float fireRateInterval = 2f; // Tiros por segundo
     public float range = 15f;
     public GameObject projectilePrefab; // Usado para Single, Spread, Double
 

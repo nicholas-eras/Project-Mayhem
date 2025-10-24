@@ -12,7 +12,7 @@ public class AutoShooter : MonoBehaviour
 
     [Header("Atributos da Arma")]
     [Tooltip("Tiros por segundo.")]
-    [SerializeField] private float fireRate = 2f;
+    [SerializeField] private float fireRateInterval = 2f;
 
     [Tooltip("O alcance máximo para encontrar um alvo.")]
     [SerializeField] private float targetRange = 15f;
@@ -38,7 +38,7 @@ public class AutoShooter : MonoBehaviour
         {
             Shoot();
             // Reseta o temporizador para o próximo tiro
-            fireTimer = 1f / fireRate;
+            fireTimer = 1f / fireRateInterval;
         }
     }
 

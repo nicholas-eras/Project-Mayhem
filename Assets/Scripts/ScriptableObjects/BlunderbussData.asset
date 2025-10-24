@@ -14,11 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   weaponName: Blunderbuss
   damage: 2
-  fireRate: 2
+  fireRateInterval: 2
   range: 7
   projectilePrefab: {fileID: 7887839903795761724, guid: 83716a9a53e8eb544927157b5320a356, type: 3}
   fireType: 1
   spreadAngle: 30
   doubleShotSeparation: 0.5
   laserLength: 20
-  shootSoundName: ShootPistol
+  shootSoundName: Blunderbuss

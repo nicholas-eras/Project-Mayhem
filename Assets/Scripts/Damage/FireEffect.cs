@@ -30,15 +30,12 @@ public class FireEffect : MonoBehaviour
         // Se já estiver pegando fogo, NÃO reinicia (mantém o fogo original)
         if (fireRoutine != null)
         {
-            Debug.Log($"[FireEffect] Já está pegando fogo. Ignorando nova aplicação.", this);
             return;
         }
 
         IsOnFire = true;
         StartVisuals();
         fireRoutine = StartCoroutine(FireDamageRoutine(tickDamage, duration, tickInterval));
-        
-        Debug.Log($"[FireEffect] Fogo aplicado! Dano: {tickDamage}, Duração: {duration}s, Intervalo: {tickInterval}s", this);
     }
 
     private IEnumerator FireDamageRoutine(float tickDamage, float duration, float tickInterval)
@@ -53,14 +50,12 @@ public class FireEffect : MonoBehaviour
             targetHealthSystem.TakeDamage(damageInfo, null); // null = não ativa cooldown
             
             tickCount++;
-            Debug.Log($"[FireEffect] TICK #{tickCount}: {tickDamage} dano aplicado. Tempo decorrido: {elapsedTime:F2}s/{duration}s", this);
             
             yield return new WaitForSeconds(tickInterval);
             elapsedTime += tickInterval;
         }
 
         // Finaliza o efeito
-        Debug.Log($"[FireEffect] Fogo extinto após {tickCount} ticks ({elapsedTime:F2}s).", this);
         fireRoutine = null;
         StopVisuals();
         IsOnFire = false;
@@ -97,7 +92,5 @@ public class FireEffect : MonoBehaviour
         
         StopVisuals();
         IsOnFire = false;
-        
-        Debug.Log($"[FireEffect] Fogo curado externamente.", this);
     }
 }

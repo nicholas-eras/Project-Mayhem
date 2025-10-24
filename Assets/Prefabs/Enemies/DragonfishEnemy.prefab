@@ -125,7 +125,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 2.5
-  collisionDamage: 15
+  collisionDamage: 1
   stopDistance: 0
   damageType: 3
   isBoss: 0
@@ -136,7 +136,8 @@ MonoBehaviour:
   areaEffectDuration: 5
   deathPayloadScale: 1
   activePayloadPrefab: {fileID: 9207001496487433252, guid: 1113d5776394d734b9cdd1841bfc8fb7, type: 3}
-  payloadScale: 1
+  payloadScale: 3
+  isGreaterBoss: 0
 --- !u!114 &8142928547277015522
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -171,6 +172,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  isGreaterBossPart: 0
 --- !u!114 &949095876173313355
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -205,8 +207,9 @@ MonoBehaviour:
   projectileDamage: 2
   projectileSpeed: 15
   projectileLifetime: 5
-  fireRate: 0.75
+  fireRateInterval: 1
   shootingRange: 13
+  playerTarget: {fileID: 0}
 --- !u!114 &128818786
 MonoBehaviour:
   m_ObjectHideFlags: 0

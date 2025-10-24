@@ -20,7 +20,7 @@ public class HealthSystem : MonoBehaviour
     [Header("Audio")]
     [SerializeField] private string takeDamageSoundName;
     [SerializeField] private string deathSoundName;
- 
+
     [Header("Cooldown de Dano por Fonte")]
     [Tooltip("Por quanto tempo uma fonte de dano não pode causar dano novamente. Este é o tempo de invulnerabilidade do Player.")]
     [SerializeField] public float damageCooldown = 1f;
@@ -35,32 +35,50 @@ public class HealthSystem : MonoBehaviour
 
     [Header("Configuração de Boss")]
     [Tooltip("Se for True, a vida será vinculada ao BossHealthLinker.")]
-    [SerializeField] private bool isGreaterBossPart = false; // Flag para partes do Greater Boss
-    private BossHealthLinker healthLinker; // Referência ao Linker Central
+    [SerializeField] private bool isGreaterBossPart = false;
+    private BossHealthLinker healthLinker;
+
+    // --- NOVO: Variáveis para a lógica de morte do Jogador ---
+    private bool isDead = false; // Flag para prevenir morte dupla
+    private WaveManager waveManager; // Referência para saber se é wave de boss
 
     void Awake()
     {
-        // Se for uma parte do Greater Boss, a vida inicial é gerenciada pelo Linker
         if (!isGreaterBossPart)
         {
             currentHealth = MaxHealth;
         }
         else
         {
-             // Encontra o linker no Awake (deve estar na cena)
             healthLinker = FindObjectOfType<BossHealthLinker>();
             if (healthLinker == null)
             {
                 Debug.LogError("Greater Boss Part precisa de um BossHealthLinker na cena!");
             }
+            currentHealth = 100000f;
         }
     }
+    
     void Start()
     {
         if (gameObject.CompareTag("Player"))
         {
             isPlayer = true;
             canRegen = true;
+            
+            // --- NOVO: Encontra o WaveManager ---
+            waveManager = FindObjectOfType<WaveManager>();
+            if (waveManager == null)
+            {
+                Debug.LogWarning("HealthSystem do Player não encontrou o WaveManager!");
+            }
+        }
+        
+        if (isGreaterBossPart && healthLinker != null)
+        {
+            maxHealth = healthLinker.initialTotalHealth; 
+            currentHealth = healthLinker.CurrentHealth;
+            healthLinker.OnBossHealthChanged += UpdateLocalHealthFromLinker;
         }
 
         OnHealthChanged?.Invoke(currentHealth, MaxHealth);
@@ -70,35 +88,40 @@ public class HealthSystem : MonoBehaviour
             StartCoroutine(RegenRoutine());
         }
             
-        // --- FIX 1: SUBSCRIBE USING THE SINGLETON INSTANCE ---
-        // Access the OnShopClosed event via UpgradeManager.Instance
         if (UpgradeManager.Instance != null)
         {
             UpgradeManager.Instance.OnShopClosed += FullHealthRegen;
         }
         
-
         EnemyController controller = GetComponent<EnemyController>();
         if (controller != null && controller.isBoss)
         {
             SetupBossHealthBar(controller);
         }
+    }
 
-        // Se for parte do Boss, a vida inicial é a vida atual do linker
-        if (isGreaterBossPart && healthLinker != null)
+    private void UpdateLocalHealthFromLinker(float newCurrentHealth, float newMaxHealth)
+    {
+        currentHealth = newCurrentHealth;
+        OnHealthChanged?.Invoke(currentHealth, maxHealth); 
+
+        // --- MUDANÇA: Adiciona checagem de isDead ---
+        if (currentHealth <= 0 && !isDead)
         {
-            currentHealth = healthLinker.CurrentHealth;
-            OnHealthChanged?.Invoke(currentHealth, MaxHealth);
+            Die();
         }
     }
 
-    // --- FIX 2: ADD ONDESTROY TO UNSUBSCRIBE FROM THE EVENT ---
-    // This prevents errors if the player object is destroyed but the UpgradeManager is not.
     private void OnDestroy()
     {
         if (isPlayer && UpgradeManager.Instance != null)
         {
             UpgradeManager.Instance.OnShopClosed -= FullHealthRegen;
+        }
+        
+        if (isGreaterBossPart && healthLinker != null)
+        {
+            healthLinker.OnBossHealthChanged -= UpdateLocalHealthFromLinker;
         }
     }
 
@@ -121,18 +144,15 @@ public class HealthSystem : MonoBehaviour
     {
         currentHealth = MaxHealth;
         OnHealthChanged?.Invoke(currentHealth, MaxHealth);
-        // 2. Limpa os Efeitos de Status Negativos
         if (playerStatusEffects != null)
         {
-            playerStatusEffects.CureAllStatusEffects(); // <--- CHAMADA ADICIONADA AQUI
+            playerStatusEffects.CureAllStatusEffects();
         }
     }
     
     public void Heal(int amount)
     {
-        currentHealth += amount;
-        currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);
-        OnHealthChanged?.Invoke(currentHealth, MaxHealth);
+        Heal((float)amount); // Reutiliza a outra função Heal
     }
 
     private void SetupBossHealthBar(EnemyController controller)
@@ -155,62 +175,53 @@ public class HealthSystem : MonoBehaviour
     public void TakeDamage(DamageInfo info, GameObject damageSource = null)
     {
         // 1. CHECAGEM DE COOLDOWN/INVULNERABILIDADE (i-frames)
-
-        // O cooldown é ativado apenas se houver uma fonte de dano (não é tick de veneno).
         bool hasDamageSource = damageSource != null;
-
-        // Verifica se a fonte de dano está em cooldown
         bool isSourceOnCooldown = hasDamageSource && sourcesOnCooldown.Contains(damageSource);
 
         if (isSourceOnCooldown)
         {
-            // Permite que o dano UNBLOCKABLE e de VENENO passem pelo cooldown.
-            // Se for STANDARD, o dano é bloqueado (return).
             if (info.type != DamageType.Unblockable && info.type != DamageType.Poison && info.type != DamageType.Fire)
             {
                 return;
             }
-            // Se for Unblockable ou Poison, o código continua e o dano é aplicado.
         }
 
-        // Se o alvo já está morto, saia
-        if (currentHealth <= 0) return;
+        // --- MUDANÇA: Se o alvo já está morto, saia ---
+        if (isDead || currentHealth <= 0) return;
 
         // 2. APLICAÇÃO DE DANO E FEEDBACK
-
-        // Toca o som de dano
         if (!string.IsNullOrEmpty(takeDamageSoundName))
         {
-            // Remove os comentários se o AudioManager.Instance.PlaySFX estiver configurado.
-            AudioManager.Instance.PlaySFX(takeDamageSoundName);
+            AudioManager.Instance.PlaySFX(takeDamageSoundName); 
         }
 
         float damageToApply = info.damageAmount;
 
-        if (info.type == DamageType.Poison && currentHealth - info.damageAmount < 1)
-        {
-            currentHealth = 1;
-        }
-        else if (isGreaterBossPart && healthLinker != null)
+        // === LÓGICA DE DANO PARA GREATER BOSS ===
+        if (isGreaterBossPart && healthLinker != null)
         {
             healthLinker.TakeDamage(damageToApply);
-            // Atualiza a vida local apenas para a UI
-            currentHealth = healthLinker.CurrentHealth;
-        }                         
+            return; 
+        } 
+        // ==========================================
+        
+        // Dano normal (inimigos e Bosses não Greater)
         else
         {
-            currentHealth -= info.damageAmount;
-            currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);
-        }        
-
-        // Atualiza a UI
+            if (info.type == DamageType.Poison && currentHealth - info.damageAmount < 1)
+            {
+                currentHealth = 1;
+            }
+            else
+            {
+                currentHealth -= info.damageAmount;
+                currentHealth = Mathf.Clamp(currentHealth, 0, MaxHealth);
+            }
+        } 
+        
         OnHealthChanged?.Invoke(currentHealth, MaxHealth);
 
         // 3. ATIVAÇÃO DO COOLDOWN DE INVULNERABILIDADE
-
-        // O cooldown de invulnerabilidade é aplicado APENAS se:
-        // a) Houver uma fonte (para rastreá-la).
-        // b) O dano NÃO for um tick de veneno (pois o veneno não deve ser bloqueado por i-frames).
         if (hasDamageSource && info.type != DamageType.Poison && info.type != DamageType.Fire)
         {
             StartCoroutine(AddSourceToCooldown(damageSource));
@@ -221,8 +232,8 @@ public class HealthSystem : MonoBehaviour
         {
             Die();
         }
-    }        
-
+    } 
+    
     private IEnumerator AddSourceToCooldown(GameObject source)
     {
         sourcesOnCooldown.Add(source);
@@ -230,26 +241,70 @@ public class HealthSystem : MonoBehaviour
         sourcesOnCooldown.Remove(source);
     }
 
+    // Este método já estava correto e será chamado pelo GameManager
+    public void ResetForRetry()
+    {
+        // 1. Restaura a vida
+        currentHealth = maxHealth;
+        isDead = false; // --- MUDANÇA: Agora temos a flag 'isDead'
+
+        // 2. Notifica a UI para atualizar
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+
+        // 3. Reativa os componentes do jogador
+        // (Ajuste os nomes se 'PlayerController' ou 'PlayerWeaponManager' estiverem errados)
+        GetComponent<PlayerController>().enabled = true;
+        GetComponent<PlayerWeaponManager>().enabled = true;
+
+        // 4. Opcional: move o jogador para um ponto de spawn seguro
+        transform.position = Vector3.zero; 
+
+        Debug.Log("[Player] Jogador resetado para tentar novamente.");
+    }
+
+
+    // --- MUDANÇA: LÓGICA 'DIE()' SEPARADA ---
     private void Die()
     {
-        OnDeath?.Invoke();
+        // 1. Prevenir morte dupla
+        if (isDead) return;
+        isDead = true;
 
-        // 1. Loga que a morte está ocorrendo
-        Debug.Log($"[HS] {gameObject.name} (HP 0): Tentando iniciar a morte.");
-
-        EnemyController enemyController = GetComponent<EnemyController>();
-
-        if (enemyController != null)
+        // 2. Lógica de Morte específica
+        if (isPlayer)
         {
-            // 2. Loga se encontrou o controlador
-            Debug.Log("[HS] Chamando EnemyController.Die() para liberar payload.");
-            enemyController.Die();
+            // --- É O JOGADOR ---
+            Debug.Log("Jogador Morreu! Verificando se era wave de Boss...");
+            
+            bool wasBossWave = false;
+            if (waveManager != null)
+            {
+                // Pergunta ao WaveManager se a wave atual é um boss
+                // (Requer a propriedade 'IsCurrentWaveGreaterBoss' no WaveManager)
+                wasBossWave = waveManager.IsCurrentWaveGreaterBoss; 
+            }
+
+            // Chama o GameOver correto DIRETAMENTE no GameManager
+            GameManager.Instance.GameOver(wasBossWave);
+            
+            // IMPORTANTE: Não chamamos OnDeath?.Invoke() para o jogador,
+            // pois ele está ligado no Inspector ao GameOver() antigo (sem parâmetro).
         }
         else
         {
-            // 3. Loga se destruiu diretamente (Player, etc.)
-            Debug.Log("[HS] Nao ha Controller. Destruicao direta.");
-            Destroy(gameObject);
+            // --- É UM INIMIGO ---
+            OnDeath?.Invoke(); // Dispara o evento (para loot, contagem de wave, etc.)
+
+            EnemyController enemyController = GetComponent<EnemyController>();
+            if (enemyController != null)
+            {
+                enemyController.Die();
+            }
+            else
+            {
+                // Se não tiver script de inimigo, apenas destrói
+                Destroy(gameObject);
+            }
         }
     }
 
@@ -277,15 +332,26 @@ public class HealthSystem : MonoBehaviour
 
     public void IncreaseMaxHealth(float percentage)
     {
-        float maxHealthIncrease = MaxHealth + percentage;
-        MaxHealth = Mathf.RoundToInt(maxHealthIncrease); 
-        Heal(Mathf.RoundToInt(maxHealthIncrease));
+        // --- MUDANÇA: Cálculo de vida corrigido ---
+        // 'percentage' deve ser um multiplicador (ex: 0.2 para 20%)
+        // Se 'percentage' for um valor fixo (ex: 20), a lógica abaixo está errada.
+        // Assumindo que 'percentage' é o valor bruto a ser somado:
+        
+        float healthIncreaseAmount = percentage; // Se o upgrade.value for 20, aumenta 20.
+        
+        // Se o seu 'percentage' for 0.2 (20%):
+        // float healthIncreaseAmount = MaxHealth * percentage; 
+
+        MaxHealth += healthIncreaseAmount;
+        Heal(healthIncreaseAmount); // Cura o jogador no mesmo montante
         
         OnHealthChanged?.Invoke(currentHealth, MaxHealth);
     }
     
     public void IncreaseRegenRate(float percentage)
     {
-        regenRate += percentage;
+        // Mesma lógica de IncreaseMaxHealth:
+        // 'percentage' é o valor bruto a ser somado (ex: 0.5)
+        regenRate += percentage; 
     }
 }

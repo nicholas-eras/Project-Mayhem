@@ -75,6 +75,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5206da7fce94ab849b6d396a6047f92e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mainSpriteRenderer: {fileID: 495513380664334521}
   weaponData: {fileID: 11400000, guid: bea727e29e9ba384cae78c9c06a6031f, type: 2}
   firePoint: {fileID: 5851096791583619463}
   enemyLayer:

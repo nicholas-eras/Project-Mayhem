@@ -191,6 +191,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  isGreaterBossPart: 0
 --- !u!114 &4597002903468594359
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -207,6 +208,8 @@ MonoBehaviour:
   weaponHolder: {fileID: 4597002903764678434}
   weaponPrefabsForTesting:
   - {fileID: 4156104687730460143, guid: 8ce34cdc240a0614c9ea837616d37421, type: 3}
+  - {fileID: 4156104687730460143, guid: d0d7b918784e04244b30c77168b36567, type: 3}
+  - {fileID: 4156104687730460143, guid: 80228aaa41d855a4789d4ebbf6f972c6, type: 3}
   startingWeaponPrefab: {fileID: 4156104687730460143, guid: 80228aaa41d855a4789d4ebbf6f972c6, type: 3}
 --- !u!114 &4597002902177344977
 MonoBehaviour:

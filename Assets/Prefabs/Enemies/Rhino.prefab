@@ -182,6 +182,7 @@ MonoBehaviour:
   deathPayloadScale: 1
   activePayloadPrefab: {fileID: 0}
   payloadScale: 1
+  isGreaterBoss: 0
 --- !u!114 &-1563115009402968619
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -216,6 +217,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  isGreaterBossPart: 0
 --- !u!114 &1613433099821570428
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -257,9 +259,10 @@ MonoBehaviour:
   firePoint: {fileID: 1648832737}
   projectileDamage: 5
   projectileSpeed: 6
-  projectileLifetime: 5
-  fireRate: 1
+  projectileLifetime: 2
+  fireRateInterval: 1
   shootingRange: 7
+  playerTarget: {fileID: 0}
 --- !u!114 &1871482431348665952
 MonoBehaviour:
   m_ObjectHideFlags: 0

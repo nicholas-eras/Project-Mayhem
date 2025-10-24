@@ -248,10 +248,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_0
       rect:
         serializedVersion: 2
-        x: 24
-        y: 562
-        width: 110
-        height: 152
+        x: 141
+        y: 1122
+        width: 32
+        height: 47
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -269,10 +269,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_1
       rect:
         serializedVersion: 2
-        x: 176
-        y: 565
-        width: 110
-        height: 136
+        x: 230
+        y: 1065
+        width: 162
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -290,10 +290,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_2
       rect:
         serializedVersion: 2
-        x: 317
-        y: 568
-        width: 110
-        height: 154
+        x: 396
+        y: 1065
+        width: 158
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -311,10 +311,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_3
       rect:
         serializedVersion: 2
-        x: 488
-        y: 544
-        width: 110
-        height: 172
+        x: 562
+        y: 1065
+        width: 152
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -332,10 +332,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_4
       rect:
         serializedVersion: 2
-        x: 635
-        y: 564
-        width: 110
-        height: 152
+        x: 163
+        y: 1036
+        width: 52
+        height: 49
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -353,10 +353,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_5
       rect:
         serializedVersion: 2
-        x: 775
-        y: 571
-        width: 110
-        height: 136
+        x: 112
+        y: 952
+        width: 80
+        height: 53
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -374,10 +374,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_6
       rect:
         serializedVersion: 2
-        x: 907
-        y: 670
-        width: 10
-        height: 28
+        x: 233
+        y: 912
+        width: 146
+        height: 112
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -395,10 +395,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_7
       rect:
         serializedVersion: 2
-        x: 924
-        y: 612
-        width: 18
-        height: 18
+        x: 399
+        y: 912
+        width: 142
+        height: 112
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -416,10 +416,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_8
       rect:
         serializedVersion: 2
-        x: 944
-        y: 612
-        width: 18
-        height: 18
+        x: 565
+        y: 913
+        width: 136
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -437,10 +437,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_9
       rect:
         serializedVersion: 2
-        x: 984
-        y: 612
-        width: 18
-        height: 18
+        x: 98
+        y: 805
+        width: 32
+        height: 47
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -458,10 +458,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_10
       rect:
         serializedVersion: 2
-        x: 1004
-        y: 612
-        width: 18
-        height: 18
+        x: 168
+        y: 772
+        width: 162
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -479,10 +479,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_11
       rect:
         serializedVersion: 2
-        x: 1024
-        y: 612
-        width: 18
-        height: 18
+        x: 368
+        y: 772
+        width: 158
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -500,10 +500,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_12
       rect:
         serializedVersion: 2
-        x: 1044
-        y: 612
-        width: 18
-        height: 18
+        x: 568
+        y: 772
+        width: 154
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -521,10 +521,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_13
       rect:
         serializedVersion: 2
-        x: 1064
-        y: 612
-        width: 15
-        height: 18
+        x: 21
+        y: 630
+        width: 88
+        height: 63
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -542,10 +542,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_14
       rect:
         serializedVersion: 2
-        x: 924
-        y: 591
-        width: 18
-        height: 18
+        x: 144
+        y: 601
+        width: 182
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -563,10 +563,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_15
       rect:
         serializedVersion: 2
-        x: 944
-        y: 591
-        width: 18
-        height: 18
+        x: 344
+        y: 601
+        width: 178
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -584,10 +584,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_16
       rect:
         serializedVersion: 2
-        x: 984
-        y: 591
-        width: 18
-        height: 18
+        x: 544
+        y: 601
+        width: 172
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -605,10 +605,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_17
       rect:
         serializedVersion: 2
-        x: 1004
-        y: 591
-        width: 18
-        height: 18
+        x: 98
+        y: 486
+        width: 32
+        height: 47
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -626,10 +626,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_18
       rect:
         serializedVersion: 2
-        x: 1024
-        y: 591
-        width: 18
-        height: 18
+        x: 164
+        y: 454
+        width: 162
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -647,10 +647,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_19
       rect:
         serializedVersion: 2
-        x: 1044
-        y: 591
-        width: 18
-        height: 18
+        x: 364
+        y: 454
+        width: 158
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -668,10 +668,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_20
       rect:
         serializedVersion: 2
-        x: 1064
-        y: 591
-        width: 18
-        height: 18
+        x: 564
+        y: 454
+        width: 152
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -689,10 +689,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_21
       rect:
         serializedVersion: 2
-        x: 1084
-        y: 591
-        width: 18
-        height: 18
+        x: 74
+        y: 342
+        width: 72
+        height: 59
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -710,10 +710,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_22
       rect:
         serializedVersion: 2
-        x: 924
-        y: 570
-        width: 18
-        height: 18
+        x: 171
+        y: 314
+        width: 146
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -731,10 +731,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_23
       rect:
         serializedVersion: 2
-        x: 944
-        y: 570
-        width: 18
-        height: 18
+        x: 371
+        y: 314
+        width: 142
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -752,10 +752,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_24
       rect:
         serializedVersion: 2
-        x: 964
-        y: 570
-        width: 18
-        height: 18
+        x: 571
+        y: 314
+        width: 136
+        height: 111
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -773,10 +773,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_25
       rect:
         serializedVersion: 2
-        x: 984
-        y: 570
-        width: 18
-        height: 18
+        x: 670
+        y: 282
+        width: 28
+        height: 11
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -794,10 +794,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_26
       rect:
         serializedVersion: 2
-        x: 1004
-        y: 570
+        x: 570
+        y: 257
         width: 18
-        height: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -815,10 +815,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_27
       rect:
         serializedVersion: 2
-        x: 1024
-        y: 570
+        x: 591
+        y: 257
         width: 18
-        height: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -836,10 +836,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_28
       rect:
         serializedVersion: 2
-        x: 24
-        y: 396
-        width: 110
-        height: 158
+        x: 612
+        y: 257
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -857,10 +857,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_29
       rect:
         serializedVersion: 2
-        x: 176
-        y: 399
-        width: 110
-        height: 142
+        x: 570
+        y: 237
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -878,10 +878,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_30
       rect:
         serializedVersion: 2
-        x: 317
-        y: 368
-        width: 110
-        height: 158
+        x: 591
+        y: 237
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -899,10 +899,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_31
       rect:
         serializedVersion: 2
-        x: 488
-        y: 344
-        width: 110
-        height: 178
+        x: 612
+        y: 237
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -920,10 +920,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_32
       rect:
         serializedVersion: 2
-        x: 635
-        y: 364
-        width: 110
-        height: 158
+        x: 570
+        y: 217
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -941,10 +941,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_33
       rect:
         serializedVersion: 2
-        x: 775
-        y: 371
-        width: 110
-        height: 142
+        x: 570
+        y: 197
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -962,10 +962,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_34
       rect:
         serializedVersion: 2
-        x: 24
-        y: 230
-        width: 110
-        height: 162
+        x: 591
+        y: 197
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -983,10 +983,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_35
       rect:
         serializedVersion: 2
-        x: 176
-        y: 233
-        width: 110
-        height: 146
+        x: 612
+        y: 197
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1004,10 +1004,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_36
       rect:
         serializedVersion: 2
-        x: 317
-        y: 168
-        width: 110
-        height: 162
+        x: 570
+        y: 177
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1025,10 +1025,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_37
       rect:
         serializedVersion: 2
-        x: 488
-        y: 144
-        width: 110
-        height: 182
+        x: 591
+        y: 177
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1046,10 +1046,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_38
       rect:
         serializedVersion: 2
-        x: 635
-        y: 164
-        width: 110
-        height: 162
+        x: 612
+        y: 177
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1067,10 +1067,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_39
       rect:
         serializedVersion: 2
-        x: 775
-        y: 171
-        width: 110
-        height: 146
+        x: 570
+        y: 157
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1088,10 +1088,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_40
       rect:
         serializedVersion: 2
-        x: 31
-        y: 141
-        width: 46
-        height: 32
+        x: 591
+        y: 157
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1109,10 +1109,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_41
       rect:
         serializedVersion: 2
-        x: 115
-        y: 163
-        width: 48
-        height: 52
+        x: 612
+        y: 157
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1130,10 +1130,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_42
       rect:
         serializedVersion: 2
-        x: 195
-        y: 112
-        width: 52
-        height: 80
+        x: 591
+        y: 137
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1151,10 +1151,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_43
       rect:
         serializedVersion: 2
-        x: 348
-        y: 98
-        width: 46
-        height: 32
+        x: 612
+        y: 137
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1172,10 +1172,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_44
       rect:
         serializedVersion: 2
-        x: 507
-        y: 21
-        width: 62
-        height: 88
+        x: 591
+        y: 117
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1193,10 +1193,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_45
       rect:
         serializedVersion: 2
-        x: 667
-        y: 98
-        width: 46
-        height: 32
+        x: 612
+        y: 120
+        width: 18
+        height: 16
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1214,10 +1214,10 @@ TextureImporter:
       name: PC _ Computer - Terraria - Bosses - Eye of Cthulhu & The Twins_46
       rect:
         serializedVersion: 2
-        x: 799
-        y: 74
-        width: 58
-        height: 72
+        x: 591
+        y: 97
+        width: 18
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}

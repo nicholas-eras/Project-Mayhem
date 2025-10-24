@@ -351,7 +351,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -616,7 +616,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1332704552}
   m_HandleRect: {fileID: 1332704551}
   m_Direction: 0
-  m_Value: 1
+  m_Value: 0
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -1207,6 +1207,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 6133570077051825312, guid: fa0c7c89818023845a5a24fef5f054a2, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6133570077051825314, guid: fa0c7c89818023845a5a24fef5f054a2, type: 3}
       propertyPath: m_RootOrder
       value: 4
@@ -1254,6 +1258,10 @@ PrefabInstance:
     - target: {fileID: 6133570077051825326, guid: fa0c7c89818023845a5a24fef5f054a2, type: 3}
       propertyPath: m_Name
       value: ThemeManager
+      objectReference: {fileID: 0}
+    - target: {fileID: 6133570077051825327, guid: fa0c7c89818023845a5a24fef5f054a2, type: 3}
+      propertyPath: m_Enabled
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6133570077051825327, guid: fa0c7c89818023845a5a24fef5f054a2, type: 3}
       propertyPath: soundList.Array.size

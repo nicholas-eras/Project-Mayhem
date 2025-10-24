@@ -91,6 +91,18 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: 8a2e31247a1e99d4f9028cee8155dec8, type: 3}
     volume: 1
     pitch: 1
+  - name: Laser
+    clip: {fileID: 8300000, guid: 7e4c756c68f0b2f4aac4406c622a2cfa, type: 3}
+    volume: 0.5
+    pitch: 1
+  - name: Laser2
+    clip: {fileID: 8300000, guid: 875b45bc7d025c14d9ebc8ebeec3bc12, type: 3}
+    volume: 0.5
+    pitch: 1
+  - name: Blunderbuss
+    clip: {fileID: 8300000, guid: 8b1c7f2a0cba2e04d9b25a20bd7cd524, type: 3}
+    volume: 1
+    pitch: 1
 --- !u!82 &7795498021497512607
 AudioSource:
   m_ObjectHideFlags: 0

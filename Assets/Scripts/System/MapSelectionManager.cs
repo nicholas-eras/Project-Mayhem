@@ -27,8 +27,6 @@ public class MapSelectionManager : MonoBehaviour
 
     public void QuitGame()
     {
-        Debug.Log("Saindo do Jogo...");
-
         // 1. Comando principal para fechar a aplicação (funciona em builds)
         Application.Quit();
 

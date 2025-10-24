@@ -63,6 +63,31 @@ public class PlayerWeaponManager : MonoBehaviour
         equippedWeapons.Add(newWeapon);
         RearrangeWeapons();
     }
+
+    public List<Sprite> GetEquippedWeaponIcons()
+    {
+        List<Sprite> icons = new List<Sprite>();
+
+        foreach (GameObject weaponGO in equippedWeapons)
+        {
+            // 1. Pega o WeaponController da arma
+            WeaponController wc = weaponGO.GetComponent<WeaponController>();
+
+            // 2. Verifica se ele tem a referência do SpriteRenderer
+            if (wc != null && wc.mainSpriteRenderer != null && wc.mainSpriteRenderer.sprite != null)
+            {
+                // 3. Adiciona o sprite diretamente do SpriteRenderer!
+                icons.Add(wc.mainSpriteRenderer.sprite);
+            }
+            else
+            {
+                Debug.LogWarning("Arma " + weaponGO.name + " não possui 'mainSpriteRenderer' configurado no WeaponController.");
+            }
+        }
+
+        return icons;
+    }
+
     
     private void RearrangeWeapons()
     {
@@ -133,10 +158,10 @@ public class PlayerWeaponManager : MonoBehaviour
                 // Esta solução exige que você tenha o valor base em algum lugar.
                 
                 // Solução Padrão: Multiplicar (e aceitar que o aumento é grande se o base for alto)
-                // weapon.weaponData.fireRate *= multiplier; 
+                // weapon.weaponData.fireRateInterval *= multiplier; 
 
                 // OU, a solução mais limpa: Se você quer que o efeito pareça ADITIVO (ex: +4 Fire Rate):
-                weapon.weaponData.fireRate += percentage; // Se percentage for 1 (100%)                
+                weapon.weaponData.fireRateInterval += percentage; // Se percentage for 1 (100%)                
             }
         }
     }

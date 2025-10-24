@@ -21,12 +21,12 @@ public class EnemyShooter : MonoBehaviour
 
     [Header("Alcance e Cadência")]
     [Tooltip("O tempo mínimo, em segundos, entre cada tiro.")]
-    [SerializeField] private float fireRate = 1f;
+    [SerializeField] public float fireRateInterval = 1f;
     
     [Tooltip("A distância máxima do jogador para que o inimigo comece a atirar (Shoot Distance).")]
-    [SerializeField] private float shootingRange = 10f;
+    [SerializeField] public float shootingRange = 10f;
 
-    private Transform playerTarget;
+    public Transform playerTarget;
     private float nextFireTime;
     private PatternShooter patternShooter; 
 
@@ -35,7 +35,7 @@ public class EnemyShooter : MonoBehaviour
         // Tenta obter o PatternShooter (se estiver anexado)
         patternShooter = GetComponent<PatternShooter>(); 
     }
-    
+
     void Start()
     {
         GameObject player = GameObject.FindGameObjectWithTag("Player");
@@ -43,10 +43,10 @@ public class EnemyShooter : MonoBehaviour
         {
             playerTarget = player.transform;
         }
-        
+
         nextFireTime = Time.time;
     }
-
+    
     void Update()
     {
         if (playerTarget == null || firePoint == null || projectilePrefab == null)
@@ -84,14 +84,14 @@ public class EnemyShooter : MonoBehaviour
                     {
                         // Para todos os outros padrões (incluindo Espiral finalizada), chame ShootPattern.
                         patternShooter.ShootPattern(projectileDamage, projectileSpeed, projectileLifetime);
-                        nextFireTime = Time.time + fireRate; // Aplica o cooldown normal
+                        nextFireTime = Time.time + fireRateInterval; // Aplica o cooldown normal
                     }
                 }
                 else
                 {
                     // PatternShooter não existe: tiro simples.
                     Shoot(); 
-                    nextFireTime = Time.time + fireRate;
+                    nextFireTime = Time.time + fireRateInterval;
                 }
             }
         }

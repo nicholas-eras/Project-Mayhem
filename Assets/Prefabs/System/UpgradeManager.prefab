@@ -62,6 +62,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 43994a8822167c64e85d35ef04db7662, type: 2}
   - {fileID: 11400000, guid: 8fea8aa0970e9954696e7b3c245dc9e0, type: 2}
   optionsToShow: 4
+  rerollCost: 15
   playerStatusUI: {fileID: 0}
   movementInputScript: {fileID: 0}
   joystickVisual: {fileID: 0}

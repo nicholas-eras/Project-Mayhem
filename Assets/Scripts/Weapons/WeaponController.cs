@@ -4,6 +4,10 @@ using System.Collections; // Necessário para Coroutines (se usar laser)
 public class WeaponController : MonoBehaviour
 {
     [Header("Referências")]
+    [Tooltip("O SpriteRenderer principal que contém o visual da arma.")]
+    public SpriteRenderer mainSpriteRenderer; // <-- ADICIONE ESTA LINHA
+
+    [Header("Referências")]
     [Tooltip("Os dados desta arma (dano, cadência, etc.)")]
     public WeaponData weaponData;
 
@@ -34,7 +38,7 @@ public class WeaponController : MonoBehaviour
             if (fireTimer <= 0f && currentTarget != null)
             {
                 PerformAttack();
-                fireTimer = 1f / weaponData.fireRate;
+                fireTimer = 1f / weaponData.fireRateInterval;
             }
         }
         // Lógica de tiro para Constant (Laser)
@@ -50,7 +54,7 @@ public class WeaponController : MonoBehaviour
         // Toca o som de tiro (apenas uma vez para o ataque)
         if (!string.IsNullOrEmpty(weaponData.shootSoundName))
         {
-             // AudioManager.Instance.PlaySFX(weaponData.shootSoundName); 
+             AudioManager.Instance.PlaySFX(weaponData.shootSoundName); 
              // Deixei comentado para evitar erro de compilação
         }
 
@@ -134,12 +138,11 @@ public class WeaponController : MonoBehaviour
     {
         // **ESTE É UM SIMPLES PLACEHOLDER**
         // Em um jogo real, você usaria LineRenderer ou um objeto Laser.
-        Debug.Log("LASER FIRE STARTED!");
         
         // Loop infinito enquanto o laser está ativo
         while (isFiringConstant)
         {
-            // Lógica de dano a cada 1/fireRate segundo
+            // Lógica de dano a cada 1/fireRateInterval segundo
             // (Simulando o "Rate of Fire" como o tick de dano)
             
             // Aqui você faria o Raycast ou Overlap para causar DANO CONTÍNUO.
@@ -149,7 +152,7 @@ public class WeaponController : MonoBehaviour
             //     // Causar dano 'weaponData.damage * Time.deltaTime' 
             // }
 
-            yield return new WaitForSeconds(1f / weaponData.fireRate);
+            yield return new WaitForSeconds(1f / weaponData.fireRateInterval);
         }
     }
 
@@ -160,7 +163,6 @@ public class WeaponController : MonoBehaviour
             StopCoroutine(constantFireCoroutine);
         }
         isFiringConstant = false;
-        Debug.Log("LASER FIRE STOPPED.");
     }
 
     // --- FUNÇÃO AUXILIAR ---

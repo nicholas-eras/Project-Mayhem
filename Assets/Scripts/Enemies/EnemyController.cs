@@ -154,8 +154,6 @@ public class EnemyController : MonoBehaviour
             // Vamos usar Setup(9999f) para simular uma duracao "infinita" enquanto o inimigo vive.
             effectZone.Setup(9999f); 
         }
-        
-        Debug.Log($"[EC] Payload ativo '{activePayloadPrefab.name}' hospedado com escala: {payloadScale}.");
     }
     void Update()
     {

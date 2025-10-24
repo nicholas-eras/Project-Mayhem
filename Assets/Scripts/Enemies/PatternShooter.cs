@@ -96,7 +96,6 @@ public class PatternShooter : MonoBehaviour
             {
                 needsNewPattern = true;
                 patternSwitchTimer = patternSwitchTime;
-                Debug.Log("[PatternShooter] ⏰ Tempo de padrão expirou. Próximo disparo sorteará novo padrão.", this);
             }
         }
     }
@@ -145,15 +144,12 @@ public class PatternShooter : MonoBehaviour
                     ShootingPattern oldPattern = currentRandomPattern;
                     currentRandomPattern = randomPatterns[Random.Range(0, randomPatterns.Count)];
                     needsNewPattern = false;
-                    
-                    Debug.Log($"[PatternShooter] 🎲 Novo padrão sorteado: {currentRandomPattern} (durará {patternSwitchTime}s)", this);
-                    
+                                        
                     if (oldPattern == ShootingPattern.Rotating_Cross_Column && 
                         currentRandomPattern != ShootingPattern.Rotating_Cross_Column && 
                         shieldIsActive)
                     {
                         ClearActiveShield();
-                        Debug.Log("[PatternShooter] 🔄 Padrão mudou. Escudo anterior removido.", this);
                     }
                 }
                 
@@ -166,7 +162,6 @@ public class PatternShooter : MonoBehaviour
                 if (finalPattern != ShootingPattern.Rotating_Cross_Column && shieldIsActive)
                 {
                     ClearActiveShield();
-                    Debug.Log("[PatternShooter] 🔄 Padrão mudou. Escudo anterior removido.", this);
                 }
             }
         }
@@ -266,7 +261,6 @@ public class PatternShooter : MonoBehaviour
     {
         if (shieldIsActive)
         {
-            Debug.Log("[PatternShooter] ⚠️ Escudo já ativo. Ignorando disparo.", this);
             return;
         }
 
@@ -308,15 +302,12 @@ public class PatternShooter : MonoBehaviour
         }
         
         shieldIsActive = true;
-        Debug.Log($"[PatternShooter] 🛡️ Escudo criado com {activeShieldProjectiles.Count} projéteis!", this);
     }
 
     public void ClearActiveShield()
     {
         if (!shieldIsActive && activeShieldProjectiles.Count == 0) return;
-        
-        Debug.Log($"[PatternShooter] 🗑️ Destruindo {activeShieldProjectiles.Count} projéteis do escudo.", this);
-        
+                
         foreach (GameObject proj in activeShieldProjectiles)
         {
             if (proj != null) Destroy(proj);
@@ -343,8 +334,6 @@ public class PatternShooter : MonoBehaviour
         
         // Inverte para o próximo disparo
         crossSwapIsPlus = !crossSwapIsPlus;
-        
-        Debug.Log($"[PatternShooter] ⚔️ Cross_Swap disparado: {(offset == 0f ? "+" : "X")}. Próximo será: {(crossSwapIsPlus ? "+" : "X")}", this);
     }
     
     private void ShootCircle360()
