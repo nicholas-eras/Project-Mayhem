@@ -138,6 +138,7 @@ MonoBehaviour:
   activePayloadPrefab: {fileID: 0}
   payloadScale: 1
   isGreaterBoss: 0
+  targetCheckInterval: 1
 --- !u!114 &8142928547277015522
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -173,6 +174,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
   isGreaterBossPart: 0
+  IsBotAgent: 0
 --- !u!114 &949095876173313355
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -228,7 +230,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   patternType: 9
   randomPatterns: 05000000060000000200000007000000
-  patternSwitchTime: 4
+  patternSwitchTime: 3
   usePatternSwitchTimer: 1
   burstCount: 12
   spreadAngle: 45

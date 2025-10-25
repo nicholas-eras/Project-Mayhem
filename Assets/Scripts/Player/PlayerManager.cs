@@ -22,7 +22,6 @@ public class PlayerManager : MonoBehaviour
         if (!activePlayerHealths.Contains(playerHealth))
         {
             activePlayerHealths.Add(playerHealth);
-            Debug.Log($"[PlayerManager] Registrado: {playerHealth.gameObject.name}. Total: {activePlayerHealths.Count}");
         }
     }
 
@@ -35,9 +34,7 @@ public class PlayerManager : MonoBehaviour
         if (activePlayerHealths.Contains(playerHealth))
         {
             activePlayerHealths.Remove(playerHealth);
-            Debug.Log($"[PlayerManager] Desregistrado: {playerHealth.gameObject.name}. Restantes: {activePlayerHealths.Count}");
 
-            // Verifica se todos saíram do jogo
             if (activePlayerHealths.Count == 0)
             {
                 Debug.LogWarning("[PlayerManager] Não há mais jogadores na partida!");
@@ -45,16 +42,109 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
+    // *** MÉTODOS NOVOS PARA IDENTIFICAR JOGADORES HUMANOS ***
+
     /// <summary>
-    /// Encontra o jogador VIVO mais próximo de uma posição.
+    /// Encontra o jogador humano VIVO mais próximo de uma posição.
+    /// PRIORIZA jogadores humanos sobre bots!
+    /// </summary>
+    public Transform GetClosestHumanPlayer(Vector3 position)
+    {
+        if (activePlayerHealths.Count == 0) return null;
+
+        // Primeiro tenta encontrar jogadores humanos vivos
+        var aliveHumanPlayers = activePlayerHealths
+            .Where(h => h != null && h.CurrentHealth > 0 && IsHumanPlayer(h.gameObject))
+            .ToList();
+
+        if (aliveHumanPlayers.Count > 0)
+        {
+            return aliveHumanPlayers
+                .OrderBy(h => (h.transform.position - position).sqrMagnitude)
+                .First().transform;
+        }
+
+        // Se não há humanos vivos, retorna null
+        Debug.LogWarning("[PlayerManager] Nenhum jogador humano vivo encontrado!");
+        return null;
+    }
+
+    /// <summary>
+    /// Retorna o Transform do jogador humano local (se existir)
+    /// </summary>
+    public Transform GetLocalHumanPlayer()
+    {
+        // Busca por AgentManager que não seja bot
+        foreach (var health in activePlayerHealths)
+        {
+            if (health != null && health.gameObject.activeInHierarchy)
+            {
+                AgentManager agent = health.GetComponent<AgentManager>();
+                if (agent != null && !agent.IsPlayerBot())
+                {
+                    return health.transform;
+                }
+            }
+        }
+
+        // Fallback: busca por objetos com PlayerController ativo
+        var playerControllers = FindObjectsOfType<PlayerController>();
+        foreach (var pc in playerControllers)
+        {
+            if (pc != null && pc.enabled && pc.gameObject.activeInHierarchy)
+            {
+                return pc.transform;
+            }
+        }
+
+        return null;
+    }
+
+
+    /// <summary>
+    /// Verifica se um GameObject é um jogador humano (não bot)
+    /// </summary>
+    public bool IsHumanPlayer(GameObject playerObject)
+    {
+        if (playerObject == null) return false;
+        
+        // Método 1: Verifica pela tag
+        if (playerObject.CompareTag("Player")) return true;
+        if (playerObject.CompareTag("Bot")) return false;
+        
+        // Método 2: Verifica pelo AgentManager (mais confiável)
+        AgentManager agent = playerObject.GetComponent<AgentManager>();
+        if (agent != null)
+        {
+            return !agent.IsPlayerBot();
+        }
+        
+        // Método 3: Fallback - verifica se tem BotController ativo
+        BotController botCtrl = playerObject.GetComponent<BotController>();
+        if (botCtrl != null && botCtrl.enabled) return false;
+        
+        // Se não conseguiu determinar, assume que é humano
+        return true;
+    }
+
+    /// <summary>
+    /// Retorna o número de jogadores HUMANOS na partida
+    /// </summary>
+    public int GetHumanPlayerCount()
+    {
+        return activePlayerHealths.Count(h => h != null && IsHumanPlayer(h.gameObject));
+    }
+
+    // *** MÉTODOS EXISTENTES (mantidos para compatibilidade) ***
+
+    /// <summary>
+    /// [MANTIDO] Encontra o jogador/bot VIVO mais próximo de uma posição.
     /// </summary>
     public Transform GetClosestPlayer(Vector3 position)
     {
         if (activePlayerHealths.Count == 0) return null;
 
-        // Filtra apenas os que ainda estão vivos (CurrentHealth > 0)
         var alivePlayers = activePlayerHealths.Where(h => h != null && h.CurrentHealth > 0).ToList();
-
         if (alivePlayers.Count == 0) return null;
         if (alivePlayers.Count == 1) return alivePlayers[0].transform;
 
@@ -68,7 +158,6 @@ public class PlayerManager : MonoBehaviour
     /// </summary>
     public int GetActivePlayerCount()
     {
-        // Conta TODOS os jogadores registrados (vivos ou mortos)
         return activePlayerHealths.Count(h => h != null);
     }
 
@@ -82,15 +171,12 @@ public class PlayerManager : MonoBehaviour
 
     /// <summary>
     /// Verifica se TODOS os jogadores/bots morreram e dispara o Game Over.
-    /// Deve ser chamado pelo HealthSystem.Die() de cada jogador.
     /// </summary>
     public void CheckForAllPlayersDead()
     {
-        // Se há jogadores registrados mas NENHUM está vivo
         if (activePlayerHealths.Count > 0 && GetAlivePlayerCount() <= 0)
         {
-            Debug.Log("[PlayerManager] Todos os jogadores/bots estão mortos! Avisando GameManager.");
             GameManager.Instance?.TriggerGameOverFromPlayerManager();
         }
     }
-} 
+}

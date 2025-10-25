@@ -73,7 +73,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 2
+  m_SortingOrder: 1
   m_Sprite: {fileID: 3296144372841241373, guid: fb3e4dde16736c747977bf2ff0d60e6b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -117,6 +117,9 @@ MonoBehaviour:
   effectType: 0
   penaltyValue: 3
   effectDuration: 5
+  tickInterval: 1
+  zoneTickDamage: 0
+  zoneTickInterval: 0.5
 --- !u!114 &2096573464706473624
 MonoBehaviour:
   m_ObjectHideFlags: 0

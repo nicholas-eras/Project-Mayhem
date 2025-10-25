@@ -64,6 +64,14 @@ public class AgentManager : NetworkBehaviour
         }
         // --- FIM DA CHECAGEM ---
 
+        // *** APLICA CONFIGURAÇÕES TEMPORÁRIAS SE FOR BOT ***
+        if (temporaryIsBot && IsServer)
+        {
+            IsBot.Value = true;
+            SkinID.Value = temporarySkinID;
+            temporaryIsBot = false; // Reseta a flag
+        }
+    
 
         // --- LÓGICA DE REDE PADRÃO ---
         // Se inscreve nos eventos de mudança das NetworkVariables
@@ -168,27 +176,30 @@ public class AgentManager : NetworkBehaviour
         }
     }
 
-    public void SetupBotInitialState(int skinID)
+public void SetupBotInitialState(int skinID)
+{
+    // 1. Aplica a Skin IMEDIATAMENTE (sem esperar pela rede)
+    if (skinDatabase != null && skinID >= 0 && skinID < skinDatabase.skins.Count)
     {
-        // 1. Configura o estado visual e de controle localmente
-        // Isso é necessário porque o OnNetworkSpawn pode rodar antes do InitializeAgent
-
-        // 2. Aplica a Skin IMEDIATAMENTE (sem esperar pela rede)
-        if (skinDatabase != null && skinID >= 0 && skinID < skinDatabase.skins.Count)
-        {
-            spriteRenderer.sprite = skinDatabase.skins[skinID].skinSprite;
-        }
-
-        // 3. Ativa o BotController IMEDIATAMENTE e desativa o PlayerController
-        // Isso garante que a IA comece a rodar no Host
-        if (botControl != null) botControl.enabled = true;
-        if (playerControl != null) playerControl.enabled = false;
-
-        // 4. Marca o objeto para OnNetworkSpawn saber o que fazer
-        IsBot.Value = true; // Define o valor de rede ANTES do spawn.
+        spriteRenderer.sprite = skinDatabase.skins[skinID].skinSprite;
     }
 
+    // 2. *** CORREÇÃO: Não modifica NetworkVariables antes do spawn ***
+    // Em vez disso, vamos usar uma variável local temporária e aplicar no OnNetworkSpawn
+    temporaryIsBot = true;
+    temporarySkinID = skinID;
 
+    // 3. Marca no HealthSystem que é bot
+    HealthSystem health = GetComponent<HealthSystem>();
+    if (health != null)
+    {
+        health.IsBotAgent = true;
+    }
+}
+
+// *** ADICIONE ESTAS VARIÁVEIS TEMPORÁRIAS ***
+private bool temporaryIsBot = false;
+private int temporarySkinID = 0;
     // --- FUNÇÃO DE SETUP SINGLE PLAYER ---
     /// <summary>
     /// Chamado EXCLUSIVAMENTE pelo SinglePlayerManager para "ligar" o agente
@@ -214,33 +225,60 @@ public class AgentManager : NetworkBehaviour
     /// Chamado automaticamente (pelo Netcode ou manualmente) quando 'IsBot' muda ou na inicialização.
     /// Ativa/Desativa os scripts PlayerController e BotController.
     /// </summary>
+    // No AgentManager, modifique o método OnControllerChanged:
     private void OnControllerChanged(bool oldVal, bool isBot)
     {
-        // Garante que os componentes existem antes de tentar acessá-los
         if (playerControl == null || botControl == null)
         {
-            Debug.LogError($"[AgentManager] {gameObject.name}: PlayerController ou BotController não estão referenciados no Inspector!", this);
+            Debug.LogError($"[AgentManager] {gameObject.name}: PlayerController ou BotController não estão referenciados!", this);
             return;
         }
 
-        if (isSinglePlayer) {
-             // No Modo Single Player, a lógica é simples:
-             playerControl.enabled = !isBot; // Se NÃO for bot, ativa controle humano
-             botControl.enabled = isBot;    // Se FOR bot, ativa controle IA
-             return;
+        if (isSinglePlayer)
+        {
+            playerControl.enabled = !isBot;
+            botControl.enabled = isBot;
+            return;
         }
 
         // Lógica de Rede:
         if (isBot)
         {
-            playerControl.enabled = false; // Bots nunca usam controle humano
-            botControl.enabled = IsServer; // Apenas o Servidor/Host executa a IA do Bot
+            playerControl.enabled = false;
+            botControl.enabled = IsServer;
+
+            // Marca no Health System que é bot
+            HealthSystem health = GetComponent<HealthSystem>();
+            if (health != null)
+            {
+                health.IsBotAgent = true;
+            }
         }
         else // É um Jogador Humano
         {
-            botControl.enabled = false;    // Humanos nunca usam IA
-            playerControl.enabled = IsOwner; // Apenas o dono do objeto (jogador local) pode controlá-lo
+            botControl.enabled = false;
+            playerControl.enabled = IsOwner;
+
+            // Marca no Health System que NÃO é bot
+            HealthSystem health = GetComponent<HealthSystem>();
+            if (health != null)
+            {
+                health.IsBotAgent = false;
+            }
         }
+    }
+
+
+    public bool IsPlayerBot()
+    {
+        // No modo single player, usa a lógica local
+        if (isSinglePlayer)
+        {
+            return botControl != null && botControl.enabled;
+        }
+
+        // No modo multiplayer, usa a NetworkVariable
+        return IsBot.Value;
     }
 
     // --- LÓGICA DE MUDANÇA DE SKIN ---

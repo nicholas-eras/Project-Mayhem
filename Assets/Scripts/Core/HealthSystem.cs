@@ -233,8 +233,8 @@ public class HealthSystem : MonoBehaviour
         {
             Die();
         }
-    } 
-    
+    }
+
     private IEnumerator AddSourceToCooldown(GameObject source)
     {
         sourcesOnCooldown.Add(source);
@@ -242,34 +242,59 @@ public class HealthSystem : MonoBehaviour
         sourcesOnCooldown.Remove(source);
     }
 
-    // Este método já estava correto e será chamado pelo GameManager
+    // No seu HealthSystem, ajuste o método ResetForRetry:
+
+    // No HealthSystem, modifique o ResetForRetry:
+
     public void ResetForRetry()
     {
-        // 1. Restaura a vida
+        // 1. Restaura a vida e a flag de morte
         currentHealth = maxHealth;
-        isDead = false; // --- MUDANÇA: Agora temos a flag 'isDead'
+        isDead = false;
 
         // 2. Notifica a UI para atualizar
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
-        // 3. Reativa os componentes do jogador
-        // (Ajuste os nomes se 'PlayerController' ou 'PlayerWeaponManager' estiverem errados)
-        GetComponent<PlayerController>().enabled = true;
-        GetComponent<PlayerWeaponManager>().enabled = true;
-
-        if (IsBotAgent) // <-- MUDANÇA
+        // 3. Reativa o GameObject se estiver desativado
+        if (!gameObject.activeSelf)
         {
-            GetComponent<PlayerController>().enabled = false;
-            GetComponent<BotController>().enabled = true;
-        }
-        else // É um Humano
-        {
-            GetComponent<PlayerController>().enabled = true;
-            GetComponent<BotController>().enabled = false;
+            gameObject.SetActive(true);
         }
 
-        // 4. Opcional: move o jogador para um ponto de spawn seguro
-        transform.position = Vector3.zero; 
+        // 4. *** VERIFICA SE É BOT PELO AGENTMANAGER (MELHOR ABORDAGEM) ***
+        AgentManager agent = GetComponent<AgentManager>();
+        bool isBot = false;
+
+        if (agent != null)
+        {
+            isBot = agent.IsPlayerBot();
+            IsBotAgent = isBot; // Sincroniza com HealthSystem
+
+        }
+        else
+        {
+            isBot = IsBotAgent; // Usa o valor do HealthSystem como fallback
+        }
+
+        // 5. Reativa os componentes baseado se é bot ou humano
+        PlayerController pc = GetComponent<PlayerController>();
+        BotController bc = GetComponent<BotController>();
+        PlayerWeaponManager pwm = GetComponent<PlayerWeaponManager>();
+
+        if (pc != null)
+        {
+            pc.enabled = !isBot;
+        }
+
+        if (bc != null)
+        {
+            bc.enabled = isBot;
+        }
+
+        if (pwm != null) pwm.enabled = true;
+
+        // 6. Limpa a lista de cooldowns
+        sourcesOnCooldown.Clear();
     }
 
 // DENTRO DE HealthSystem.cs -> Die()

@@ -5,11 +5,6 @@ using UnityEngine.SceneManagement;
 using System;
 using System.Linq;
 
-/// <summary>
-/// Gerencia o fluxo das ondas de inimigos, incluindo spawn, espera,
-/// coleta de moedas e transição para a loja de upgrades.
-/// Também escala a dificuldade com base no número de jogadores.
-/// </summary>
 public class WaveManager : MonoBehaviour
 {
     public event System.Action<string> OnNewWaveStarted;
@@ -25,10 +20,7 @@ public class WaveManager : MonoBehaviour
         [Tooltip("Marque se este grupo deve ser tratado como um Boss (spawn único em posição fixa).")]
         public bool isBossGroup = false;
 
-        [Tooltip("Se for um Boss, marque para que a vida do Boss escale com os jogadores, mas NUNCA a quantidade.")]
-        public bool dontScaleQuantity = false;
-
-        [Tooltip("Se true, mantém a quantidade fixa mas MULTIPLICA A VIDA ao invés de multiplicar a quantidade.")]
+        [Tooltip("Se true, multiplica a VIDA dos inimigos ao invés de multiplicar a quantidade.")]
         public bool scaleHealthInsteadOfQuantity = false;
 
         [Tooltip("Marque se a morte para este boss deve dar a opção de 'Tentar Novamente'.")]
@@ -68,6 +60,7 @@ public class WaveManager : MonoBehaviour
     private Vector3 playerStandardSpawnPosition = Vector3.zero;
     private Vector3 playerBossSpawnPosition = Vector3.zero;
     private GameObject currentBossInstance = null;
+    private bool playersReady = false; // *** NOVO: Flag para controlar se jogadores estão prontos ***
 
     void Start()
     {
@@ -77,6 +70,36 @@ public class WaveManager : MonoBehaviour
         if (UpgradeManager.Instance == null)
             Debug.LogError("WaveManager: UpgradeManager não encontrado na cena!");
 
+        // *** NOVA LÓGICA: Se inscreve no evento e espera ***
+        if (GameSceneManager.OnAllPlayersSpawned != null)
+        {
+            GameSceneManager.OnAllPlayersSpawned += OnPlayersSpawned;
+        }
+        else
+        {
+            // Fallback: se o evento não existir, espera um tempo e inicia
+            Debug.LogWarning("[WaveManager] Evento OnAllPlayersSpawned não encontrado. Usando fallback.");
+            StartCoroutine(DelayedStart());
+        }
+    }
+
+    // *** NOVO: Método chamado quando todos os jogadores foram spawnados ***
+    private void OnPlayersSpawned()
+    {
+        playersReady = true;
+        
+        // Remove a inscrição do evento
+        GameSceneManager.OnAllPlayersSpawned -= OnPlayersSpawned;
+        
+        // Inicia as ondas
+        HandleShopClosed();
+    }
+
+    // *** NOVO: Fallback caso o evento não funcione ***
+    private IEnumerator DelayedStart()
+    {
+        yield return new WaitForSeconds(.1f);
+        playersReady = true;
         HandleShopClosed();
     }
 
@@ -123,6 +146,10 @@ public class WaveManager : MonoBehaviour
         {
             UpgradeManager.Instance.OnShopClosed -= HandleShopClosed;
         }
+        
+        // *** IMPORTANTE: Remove a inscrição do evento ***
+        GameSceneManager.OnAllPlayersSpawned -= OnPlayersSpawned;
+        
         StopAllCoroutines();
     }
 
@@ -184,6 +211,13 @@ public class WaveManager : MonoBehaviour
 
     IEnumerator StartNextWave(bool advanceWaveIndex = true)
     {
+        // *** NOVA VERIFICAÇÃO: Espera se os jogadores não estão prontos ***
+        if (!playersReady)
+        {
+            Debug.LogWarning("[WaveManager] Jogadores não estão prontos. Aguardando...");
+            yield return new WaitUntil(() => playersReady);
+        }
+
         if (advanceWaveIndex)
         {
             currentWaveIndex++;
@@ -202,9 +236,10 @@ public class WaveManager : MonoBehaviour
 
         Wave currentWave = waves[currentWaveIndex];
 
-        if (playerInstance == null && PlayerManager.Instance != null)
+        // Busca o jogador local
+        if (playerInstance == null)
         {
-             playerInstance = PlayerManager.Instance.GetClosestPlayer(Vector3.zero);
+            playerInstance = FindLocalPlayer();
         }
 
         if (playerInstance != null)
@@ -217,27 +252,30 @@ public class WaveManager : MonoBehaviour
             Debug.LogWarning("Não foi possível encontrar o jogador local para posicionar.");
         }
 
+        // *** AGORA O PLAYER COUNT DEVE ESTAR CORRETO ***
         int playerCount = 1;
         if (PlayerManager.Instance != null)
         {
             playerCount = PlayerManager.Instance.GetActivePlayerCount();
             playerCount = Mathf.Max(1, playerCount);
+            Debug.Log($"[WaveManager] PlayerCount correto: {playerCount} jogadores+bots");
         }
         
-        float enemyHealthMultiplier = 1f + (healthMultiplierPerPlayer * (playerCount - 1));
-        Debug.Log($"Jogadores Ativos: {playerCount}. Multiplicador HP Inimigo: {enemyHealthMultiplier:F2}");
-
+     
         OnNewWaveStarted?.Invoke(currentWave.waveName ?? $"Onda {currentWaveIndex + 1}");
 
-        // LOG DETALHADO DA COMPOSIÇÃO DA ONDA
+        // LOG DA COMPOSIÇÃO DA ONDA
         Debug.Log("========================================");
         Debug.Log($"COMPOSIÇÃO DA ONDA {currentWaveIndex}: {currentWave.waveName}");
-        Debug.Log($"Jogadores Ativos: {playerCount}");
+        Debug.Log($"Jogadores+Bots Ativos: {playerCount}");
         Debug.Log("----------------------------------------");
         
         int groupIndex = 0;
         foreach (var group in currentWave.enemyGroups)
         {
+            float enemyHealthMultiplier = group.scaleHealthInsteadOfQuantity ? playerCount : 1;
+            Debug.Log($"Jogadores+Bots Ativos: {playerCount}. Multiplicador HP Inimigo: {enemyHealthMultiplier:F2}");
+
             string enemyName = group.enemyPrefab != null ? group.enemyPrefab.name : "NULL";
             
             if (group.isBossGroup)
@@ -257,23 +295,14 @@ public class WaveManager : MonoBehaviour
                 if (group.scaleHealthInsteadOfQuantity)
                 {
                     finalCount = baseCount;
-                    int wouldBeScaledCount = baseCount + (extraEnemiesPerPlayer * (playerCount - 1));
-                    float quantityRatio = (float)wouldBeScaledCount / baseCount;
-                    finalHealthMult = enemyHealthMultiplier * quantityRatio;
-                    Debug.Log($"[Grupo {groupIndex}] {enemyName} x{finalCount} (Base: {baseCount}, VIDA ESCALADA x{finalHealthMult:F2} - compensando {wouldBeScaledCount} inimigos)");
-                }
-                else if (group.dontScaleQuantity)
-                {
-                    finalCount = baseCount;
-                    finalHealthMult = enemyHealthMultiplier;
-                    Debug.Log($"[Grupo {groupIndex}] {enemyName} x{finalCount} (FIXO, Vida x{finalHealthMult:F2})");
+                    finalHealthMult = enemyHealthMultiplier * playerCount;
+                    Debug.Log($"[Grupo {groupIndex}] {enemyName} x{finalCount} (VIDA ESCALADA x{finalHealthMult:F2})");
                 }
                 else
                 {
-                    finalCount = baseCount + (extraEnemiesPerPlayer * (playerCount - 1));
-                    finalCount = Mathf.Max(1, finalCount);
+                    finalCount = baseCount * playerCount;
                     finalHealthMult = enemyHealthMultiplier;
-                    Debug.Log($"[Grupo {groupIndex}] {enemyName} x{finalCount} (Base: {baseCount}, Vida x{finalHealthMult:F2})");
+                    Debug.Log($"[Grupo {groupIndex}] {enemyName} x{finalCount} (QUANTIDADE ESCALADA, Vida x{finalHealthMult:F2})");
                 }
             }
             groupIndex++;
@@ -283,7 +312,7 @@ public class WaveManager : MonoBehaviour
         List<Coroutine> runningSpawners = new List<Coroutine>();
         foreach (var group in currentWave.enemyGroups)
         {
-            Coroutine spawner = StartCoroutine(SpawnEnemyGroup(group, playerCount, enemyHealthMultiplier));
+            Coroutine spawner = StartCoroutine(SpawnEnemyGroup(group, playerCount, group.scaleHealthInsteadOfQuantity ? playerCount : 1));
             runningSpawners.Add(spawner);
         }
 
@@ -327,12 +356,29 @@ public class WaveManager : MonoBehaviour
         }
     }
 
+    // *** MÉTODO: Encontra o jogador local ***
+    private Transform FindLocalPlayer()
+    {
+        // Busca por AgentManager que é dono e não é bot
+        var agents = FindObjectsOfType<AgentManager>();
+        foreach (var agent in agents)
+        {
+            if (agent != null && agent.IsOwner && !agent.IsPlayerBot())
+            {
+                return agent.transform;
+            }
+        }
+
+        Debug.LogWarning("[WaveManager] Não foi possível encontrar o jogador local!");
+        return null;
+    }
+
     private void HandleShopClosed()
     {
         StartCoroutine(StartNextWave(true));
     }
 
-    IEnumerator SpawnEnemyGroup(EnemyGroup group, int playerCount, float healthMultiplier)
+    IEnumerator SpawnEnemyGroup(EnemyGroup group, int playerCount, float baseHealthMultiplier)
     {
         if (group.initialDelay > 0)
         {
@@ -341,53 +387,32 @@ public class WaveManager : MonoBehaviour
 
         Vector3 spawnPosition = Vector3.zero;
 
-        // LÓGICA DE BOSS FIXO
         if (group.isBossGroup)
         {
             spawnPosition = waves[currentWaveIndex].bossFixedSpawnPosition;
-            
-            currentBossInstance = SpawnEnemy(group.enemyPrefab, spawnPosition, healthMultiplier); 
+            currentBossInstance = SpawnEnemy(group.enemyPrefab, spawnPosition, baseHealthMultiplier); 
             yield break;
         }
 
         bool isInfiniteSpawn = group.count <= 0;
-
         int baseCount = group.count;
         int scaledCount = baseCount;
-        float groupHealthMultiplier = healthMultiplier; // Multiplier padrão
+        float groupHealthMultiplier = baseHealthMultiplier;
 
         if (!isInfiniteSpawn)
         {
-            // NOVA LÓGICA: scaleHealthInsteadOfQuantity
             if (group.scaleHealthInsteadOfQuantity)
             {
-                // Mantém a quantidade base
                 scaledCount = baseCount;
-                // Multiplica a vida EXTRA além do multiplier base
-                // Exemplo: Se tinha 3 inimigos e agora tem 2 players (que dariam 5 inimigos)
-                // Ao invés de spawnar 5, spawna 3 com vida aumentada proporcionalmente
-                int wouldBeScaledCount = baseCount + (extraEnemiesPerPlayer * (playerCount - 1));
-                float quantityRatio = (float)wouldBeScaledCount / baseCount;
-                groupHealthMultiplier = healthMultiplier * quantityRatio;
-                
-                Debug.Log($"Grupo '{group.enemyPrefab.name}' com scaleHealthInsteadOfQuantity. " +
-                         $"Quantidade fixa: {scaledCount}. Vida multiplicada por {groupHealthMultiplier:F2} " +
-                         $"(seria {wouldBeScaledCount} inimigos normais).");
-            }
-            else if (group.dontScaleQuantity)
-            {
-                scaledCount = baseCount;
-                Debug.Log($"Grupo '{group.enemyPrefab.name}' NÃO escalado em quantidade. Base: {baseCount}.");
+                groupHealthMultiplier = baseHealthMultiplier * playerCount;
             }
             else
             {
-                scaledCount = baseCount + (extraEnemiesPerPlayer * (playerCount - 1));
-                scaledCount = Mathf.Max(1, scaledCount);
-                Debug.Log($"Grupo '{group.enemyPrefab.name}' escalado. Base: {baseCount}, Total: {scaledCount}.");
+                scaledCount = baseCount * playerCount;
+                groupHealthMultiplier = baseHealthMultiplier;
             }
         }
 
-        // Spawn Finito
         if (!isInfiniteSpawn)
         {
             for (int i = 0; i < scaledCount; i++)
@@ -407,7 +432,6 @@ public class WaveManager : MonoBehaviour
                 yield return new WaitForSeconds(group.spawnInterval);
             }
         }
-        // Spawn Infinito
         else if (isInfiniteSpawn && currentBossInstance != null)
         {
             while (currentBossInstance != null)

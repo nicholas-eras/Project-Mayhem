@@ -19,3 +19,21 @@ MonoBehaviour:
     skinSprite: {fileID: 21300000, guid: 4d0d4e65959b31944becd25b143cbf48, type: 3}
   - skinName: Soldier
     skinSprite: {fileID: 21300000, guid: 07e6be7ef118c6f488c232adab759a76, type: 3}
+  - skinName: Artificer
+    skinSprite: {fileID: 21300000, guid: 54dc7edf186581a4099b3cde0bf49907, type: 3}
+  - skinName: Crypt
+    skinSprite: {fileID: 21300000, guid: fa66c20d563c1c0478a9b5f4f3feed7d, type: 3}
+  - skinName: Cyborg
+    skinSprite: {fileID: 21300000, guid: a4aac86743554ac409375ad46f206715, type: 3}
+  - skinName: Demon
+    skinSprite: {fileID: 21300000, guid: 30d44e68b7de5c0448b123eeba3ba3a2, type: 3}
+  - skinName: Ghost
+    skinSprite: {fileID: 21300000, guid: 9f875f79bb58fcb418e4ce8f8b7a052b, type: 3}
+  - skinName: Golem
+    skinSprite: {fileID: 21300000, guid: 7ad5c310c00c534459f041ff8a5ba11c, type: 3}
+  - skinName: Hunter
+    skinSprite: {fileID: 21300000, guid: 0abdb7055d8d61342bd5d3690dc6cb5e, type: 3}
+  - skinName: Knight
+    skinSprite: {fileID: 21300000, guid: 8158cca4d57b81642b441c963be49f63, type: 3}
+  - skinName: Lich
+    skinSprite: {fileID: 21300000, guid: f6760019f6132d344a0caf2ef0389a34, type: 3}
