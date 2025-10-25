@@ -150,7 +150,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 360ad1b779095b344af0c573e82891c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 2000
+  maxHealth: 2500
   canRegen: 1
   regenRate: 2
   regenInterval: 1
@@ -228,7 +228,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   patternType: 9
   randomPatterns: 05000000060000000200000007000000
-  patternSwitchTime: 5
+  patternSwitchTime: 4
   usePatternSwitchTimer: 1
   burstCount: 12
   spreadAngle: 45
@@ -238,7 +238,7 @@ MonoBehaviour:
   fixedEscapeIndex: 3
   infiniteSpiral: 0
   requiredRotations: 2
-  spiralInterval: 0.1
+  spiralInterval: 0.05
   spiralRotationStep: 20
   shieldRotationParent: {fileID: 6969154949340270906}
   enemyShooter: {fileID: 3625692136842929782}

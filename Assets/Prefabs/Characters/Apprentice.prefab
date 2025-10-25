@@ -218,6 +218,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  isGreaterBossPart: 0
 --- !u!114 &170300933
 MonoBehaviour:
   m_ObjectHideFlags: 0

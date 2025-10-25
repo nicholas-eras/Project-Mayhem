@@ -37,12 +37,11 @@ public class PlayerStatusUI : MonoBehaviour
 
     public void Setup(PlayerController pc, HealthSystem hs, PlayerWeaponManager pwm)
     {
-        Debug.Log("Setup() chamado.");
         playerController = pc;
         healthSystem = hs;
         weaponManager = pwm;
 
-        SpriteRenderer playerRenderer = pc.GetComponent<SpriteRenderer>();
+        SpriteRenderer playerRenderer = pc.GetComponentInChildren<SpriteRenderer>(); 
         if (playerRenderer != null && playerSpriteImage != null)
         {
             if (playerRenderer.sprite != null)

@@ -11,10 +11,10 @@ public class UpgradeManager : MonoBehaviour
     [SerializeField] private GameObject upgradePanel;
     [SerializeField] private GameObject upgradeCardPrefab;
     [SerializeField] private Transform cardContainer;
-    [SerializeField] private PlayerWallet playerWallet;
-    [SerializeField] private PlayerController playerController;
-    [SerializeField] private HealthSystem playerHealthSystem;
-    [SerializeField] private PlayerWeaponManager playerWeaponManager;
+    private PlayerWallet playerWallet;
+    private PlayerController playerController;
+    private HealthSystem playerHealthSystem;
+    private PlayerWeaponManager playerWeaponManager;
 
     [Header("Configuração")]
     [Tooltip("Todos os upgrades possíveis no jogo.")]
@@ -30,12 +30,11 @@ public class UpgradeManager : MonoBehaviour
     [SerializeField] private PlayerStatusUI playerStatusUI;
 
     [Header("Input Control")]
-    [Tooltip("O script de Joystick/Movimento para desativar durante a loja.")]
-    [SerializeField] private JoystickMove movementInputScript;
-    [SerializeField] private GameObject joystickVisual;
+    // --- MODIFICADO: Remover [SerializeField] ---
+    private JoystickMove movementInputScript;
+    private GameObject joystickVisual; // O Spawner também nos dará isso
     public static bool IsShopOpen { get; private set; } = false;
 
-    // --- FIX 2: ADD THE AWAKE METHOD FOR SINGLETON LOGIC ---
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -45,22 +44,61 @@ public class UpgradeManager : MonoBehaviour
         else
         {
             Instance = this;
+            // Opcional: DontDestroyOnLoad(gameObject); se ele estiver em uma cena persistente
         }
     }
 
+    // --- NOVO MÉTODO PÚBLICO DE REGISTRO ---
+    /// <summary>
+    /// Chamado pelo PlayerSpawner para conectar o P1 (ou o jogador alvo)
+    /// a este UpgradeManager.
+    /// </summary>
+    public void RegisterPlayer(GameObject player, JoystickMove joystickScript, GameObject joystickViz)
+    {
+        if (player == null)
+        {
+            Debug.LogError("UpgradeManager: Tentativa de registrar um Jogador nulo!");
+            return;
+        }
+
+        // 1. Pega todos os componentes do jogador
+        playerWallet = player.GetComponent<PlayerWallet>();
+        playerController = player.GetComponent<PlayerController>();
+        playerHealthSystem = player.GetComponent<HealthSystem>();
+        playerWeaponManager = player.GetComponent<PlayerWeaponManager>();
+        
+        // 2. Armazena as referências do joystick
+        movementInputScript = joystickScript;
+        joystickVisual = joystickViz;
+
+        // 3. Verifica se tudo foi encontrado
+        if (playerWallet == null || playerController == null || playerHealthSystem == null || playerWeaponManager == null)
+        {
+            Debug.LogError($"UpgradeManager: Falha ao pegar todos os componentes do Jogador '{player.name}'!", player);
+        }
+    }
+    
+    // --- FIM DO NOVO MÉTODO ---
+
     public void ShowUpgradeScreen()
     {
+        // --- VERIFICAÇÃO DE SEGURANÇA ---
+        if (playerHealthSystem == null)
+        {
+            Debug.LogError("Loja aberta, mas NENHUM JOGADOR foi registrado no UpgradeManager! Chame RegisterPlayer() no PlayerSpawner.");
+            return; // Impede a loja de abrir se o jogador não existe
+        }
+        // --- FIM DA VERIFICAÇÃO ---
+        
         Time.timeScale = 0f;
         upgradePanel.SetActive(true);
         IsShopOpen = true;
         
-        // Configura e atualiza o painel de status do jogador
         if (playerStatusUI != null)
         {
             playerStatusUI.Setup(playerController, playerHealthSystem, playerWeaponManager);
         }
         
-        // AÇÃO 1: DESATIVA O INPUT DE MOVIMENTO
         if (movementInputScript != null)
         {
             movementInputScript.enabled = false;
@@ -70,10 +108,7 @@ public class UpgradeManager : MonoBehaviour
             joystickVisual.SetActive(false);
         }
         
-        // --- MUDANÇA: A lógica de geração de cartas foi movida para um método separado ---
         GerarNovasCartas();
-
-        
     }
 
     // --- NOVO: MÉTODO PÚBLICO PARA O BOTÃO DE ATUALIZAR (REROLL) ---

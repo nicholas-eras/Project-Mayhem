@@ -2,43 +2,58 @@ using UnityEngine;
 
 public class JoystickMove : MonoBehaviour
 {
-    public Joystick movementJoystick;
+    // 1. MODIFICADO: De 'public' para 'private'
+    // Não precisa mais ser público, pois o Spawner vai injetar.
+    private Joystick movementJoystick; 
 
-    private PlayerController playerController; 
+    private PlayerController playerController;
 
     private void Start()
     {
-        playerController = GetComponent<PlayerController>(); 
+        playerController = GetComponent<PlayerController>();
 
         if (playerController == null)
         {
             Debug.LogError("PlayerController não encontrado. O joystick não funcionará.", this);
         }
+        
+        // Não procuramos mais o joystick aqui, esperamos o Spawner nos entregar.
     }
 
-// NO JoystickMove.cs
-
-private void FixedUpdate()
-{
-    // 1. Verifique o status da loja
-    if (UpgradeManager.IsShopOpen)
+    // --- NOVO MÉTODO PÚBLICO ---
+    /// <summary>
+    /// Chamado pelo PlayerSpawner para entregar a referência do Joystick.
+    /// </summary>
+    public void AssignJoystick(Joystick joy)
     {
-        // Se a loja está aberta, force o input a ser zero
+        movementJoystick = joy;
+    }
+
+    private void FixedUpdate()
+    {
+        // 3. ADICIONE UMA VERIFICAÇÃO DE NULO
+        // Essencial! O script pode rodar antes do joystick ser assignado.
+        if (movementJoystick == null)
+        {
+            return; // Pula este frame
+        }
+        
+        // 1. Verifique o status da loja
+        if (UpgradeManager.IsShopOpen)
+        {
+            if (playerController != null)
+            {
+                playerController.SetExternalMovementInput(Vector2.zero);
+            }
+            return;
+        }
+
+        // 2. Lógica normal de envio (agora segura)
+        Vector2 direction = new Vector2(movementJoystick.Direction.x, movementJoystick.Direction.y);
+
         if (playerController != null)
         {
-             playerController.SetExternalMovementInput(Vector2.zero);
+            playerController.SetExternalMovementInput(direction);
         }
-        return; 
     }
-    
-    // 2. Lógica normal de envio
-    Vector2 direction = new Vector2(movementJoystick.Direction.x, movementJoystick.Direction.y);
-
-    if (playerController != null)
-    {
-        playerController.SetExternalMovementInput(direction);
-        
-        
-    }
-}
 }

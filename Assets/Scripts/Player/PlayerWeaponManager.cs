@@ -4,91 +4,121 @@ using UnityEngine;
 public class PlayerWeaponManager : MonoBehaviour
 {
     [Header("Configuração")]
-    [Tooltip("O raio do círculo onde as armas serão posicionadas.")]
     public float placementRadius = 1.2f;
-    
-    [Tooltip("O objeto filho que servirá como o centro de posicionamento.")]
     public Transform weaponHolder;
 
-    // A lista de armas que o jogador possui atualmente.
-    private List<GameObject> equippedWeapons = new List<GameObject>();
+    private List<GameObject> equippedWeapons = new List<GameObject>(); // <-- Lista crucial
+
+    // --- BÔNUS DE UPGRADE ---
+    // (Mantendo estes aqui, caso você volte a usá-los no futuro
+    // ou precise deles para outras lógicas)
+    [HideInInspector] public float damageMultiplier = 1.0f;
+    [HideInInspector] public float fireRateMultiplier = 1.0f;
+    [HideInInspector] public float rangeMultiplier = 1.0f;
 
     [Header("Debug")]
-    [Tooltip("Lista de prefabs de armas para adicionar com a tecla de atalho.")]
     public List<GameObject> weaponPrefabsForTesting;
     private int testWeaponIndex = 0;
 
-    [Header("Configuração")]
-    [Tooltip("O prefab da arma que o jogador começa o jogo. (Ex: Pistol)")]
-    [SerializeField] private GameObject startingWeaponPrefab; // <-- NOVO CAMPO
-
-    void Start()
+    private void Awake()
     {
-        if (startingWeaponPrefab != null)
+        if (weaponHolder == null)
         {
-            AddWeapon(startingWeaponPrefab);
+            weaponHolder = transform.Find("WeaponHolder");
+            if (weaponHolder == null) Debug.LogError("WeaponHolder não encontrado!", this);
         }
     }
 
-    void Update()
+    /// <summary>
+    /// Chamado pelos Spawners para dar a arma inicial.
+    /// </summary>
+    public void InitializeStartingWeapon(GameObject weaponPrefab)
     {
-        // DEBUG: Pressione "espaço" para adicionar uma nova arma para teste.
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (weaponPrefab == null)
         {
-            AddTestWeapon();
+            Debug.LogWarning($"[PWM] {gameObject.name} não recebeu arma inicial.");
+            return;
         }
+
+        // Limpa armas antigas E a lista antes de adicionar a inicial
+        foreach (Transform child in weaponHolder) Destroy(child.gameObject);
+        equippedWeapons.Clear();
+
+        // Usa o método AddWeapon para garantir consistência
+        AddWeaponInternal(weaponPrefab); 
     }
 
+    /// <summary>
+    /// Chamado pelos Upgrades para adicionar uma NOVA arma.
+    /// </summary>
     public void AddWeapon(GameObject weaponPrefab)
     {
-        if (weaponHolder == null) return;
+        // Apenas adiciona, não limpa as existentes
+        AddWeaponInternal(weaponPrefab);
+    }
+
+    /// <summary>
+    /// Método interno que faz o trabalho real de instanciar,
+    /// configurar e adicionar a arma à lista.
+    /// </summary>
+    private void AddWeaponInternal(GameObject weaponPrefab) // <-- NOVO MÉTODO INTERNO
+    {
+        if (weaponHolder == null || weaponPrefab == null) return;
 
         // 1. Cria a nova arma
         GameObject newWeapon = Instantiate(weaponPrefab, weaponHolder.position, Quaternion.identity);
-        newWeapon.transform.SetParent(weaponHolder);
+        newWeapon.transform.SetParent(weaponHolder); // Define como filho
 
         // 2. OBTÉM O WeaponController
         WeaponController weaponController = newWeapon.GetComponent<WeaponController>();
 
-        if (weaponController != null && weaponController.weaponData != null)
+        if (weaponController != null)
         {
-            // 3. CRUCIAL: CLONAR O ScriptableObject
-            // Cria uma cópia temporária do Asset para que as alterações não sejam permanentes.
-            // Assumimos que WeaponData herda de ScriptableObject.
-            WeaponData originalData = weaponController.weaponData;
-            WeaponData clonedData = Instantiate(originalData);
-            weaponController.weaponData = clonedData;
+            // 3. CLONAR O ScriptableObject (se existir)
+            // Essencial para upgrades individuais
+            if (weaponController.weaponData != null)
+            {
+                 WeaponData originalData = weaponController.weaponData;
+                 WeaponData clonedData = Instantiate(originalData); // Cria cópia
+                 weaponController.weaponData = clonedData; // Usa a cópia
+            }
+
+            // --- 4. CHAMA O SETUP! --- // <-- CORREÇÃO ESSENCIAL
+            // Passa a referência deste manager (o "Chefe") para a arma
+            weaponController.Setup(this); 
         }
 
-        equippedWeapons.Add(newWeapon);
-        RearrangeWeapons();
+        // --- 5. ADICIONA À LISTA! --- // <-- CORREÇÃO ESSENCIAL
+        equippedWeapons.Add(newWeapon); 
+
+        // --- 6. REARRANJA! --- // <-- CORREÇÃO ESSENCIAL
+        RearrangeWeapons(); 
     }
 
+
+    /// <summary>
+    /// Método chamado pela UI para obter os ícones.
+    /// </summary>
     public List<Sprite> GetEquippedWeaponIcons()
     {
         List<Sprite> icons = new List<Sprite>();
-
         foreach (GameObject weaponGO in equippedWeapons)
         {
-            // 1. Pega o WeaponController da arma
-            WeaponController wc = weaponGO.GetComponent<WeaponController>();
+            if (weaponGO == null) continue; // Segurança
 
-            // 2. Verifica se ele tem a referência do SpriteRenderer
+            WeaponController wc = weaponGO.GetComponent<WeaponController>();
             if (wc != null && wc.mainSpriteRenderer != null && wc.mainSpriteRenderer.sprite != null)
             {
-                // 3. Adiciona o sprite diretamente do SpriteRenderer!
                 icons.Add(wc.mainSpriteRenderer.sprite);
             }
-            else
-            {
-                Debug.LogWarning("Arma " + weaponGO.name + " não possui 'mainSpriteRenderer' configurado no WeaponController.");
-            }
+            // else { Debug.LogWarning(...); } // Opcional: Avisar se faltar sprite
         }
-
         return icons;
     }
-
     
+    /// <summary>
+    /// Reorganiza as armas em um círculo.
+    /// </summary>
     private void RearrangeWeapons()
     {
         int weaponCount = equippedWeapons.Count;
@@ -98,6 +128,8 @@ public class PlayerWeaponManager : MonoBehaviour
 
         for (int i = 0; i < weaponCount; i++)
         {
+            if (equippedWeapons[i] == null) continue; // Segurança
+
             float angle = i * angleStep;
             Vector3 weaponPosition = new Vector3(
                 Mathf.Cos(angle * Mathf.Deg2Rad),
@@ -105,83 +137,74 @@ public class PlayerWeaponManager : MonoBehaviour
                 0
             ) * placementRadius;
             
-            // Aplica a posição local em relação ao "suporte" de armas.
             equippedWeapons[i].transform.localPosition = weaponPosition;
+        }
+    }
+
+    // --- DEBUG ---
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            AddTestWeapon();
         }
     }
 
     private void AddTestWeapon()
     {
-        if (weaponPrefabsForTesting.Count == 0) return;
-
+        if (weaponPrefabsForTesting == null || weaponPrefabsForTesting.Count == 0) return;
         AddWeapon(weaponPrefabsForTesting[testWeaponIndex]);
         testWeaponIndex = (testWeaponIndex + 1) % weaponPrefabsForTesting.Count;
     }
+    // --- FIM DEBUG ---
     
-    // 1. AUMENTO DE DANO
-    public void IncreaseDamage(float percentage)
-    {
-        // O valor 'percentage' é o multiplicador de aumento (ex: 0.1 para 10%).
-        float multiplier = percentage; 
-
-        foreach (GameObject weaponGO in equippedWeapons)
-        {
-            // Tenta obter o WeaponController.
-            WeaponController weapon = weaponGO.GetComponent<WeaponController>();
-            
-            if (weapon != null && weapon.weaponData != null)
-            {
-                // Aplica o multiplicador ao campo 'damage' do WeaponData (que deve ser a cópia clonada).
-                weapon.weaponData.damage += multiplier;                
-            }
-        }
-    }
-    
-    // 2. AUMENTO DE CADÊNCIA (Fire Rate)
-    public void IncreaseFireRateMultiplier(float percentage)
-    {
-        // Aumentar o FireRate em 50% significa aumentar o multiplicador em 1.5.
-        // O ideal é que o upgrade seja aditivo ou que o valor base da arma seja o ponto de partida.
-        
-        // COMO CORRIGIR O PROBLEMA DE MULTIPLICAÇÃO EXAGERADA:
-        float multiplier = 1f + percentage; // Ex: 1.15 para 15%
-
-        foreach (GameObject weaponGO in equippedWeapons)
-        {
-            WeaponController weapon = weaponGO.GetComponent<WeaponController>();
-            if (weapon != null && weapon.weaponData != null)
-            {
-                // O código original estava correto para aumentar uma frequência, mas causa o exagero.
-                // Para consertar o exagero, vamos aplicar a mudança de forma mais controlada.
-                
-                // Se você quer que o upgrade seja ADITIVO (e não cumulativo no código):
-                // Esta solução exige que você tenha o valor base em algum lugar.
-                
-                // Solução Padrão: Multiplicar (e aceitar que o aumento é grande se o base for alto)
-                // weapon.weaponData.fireRateInterval *= multiplier; 
-
-                // OU, a solução mais limpa: Se você quer que o efeito pareça ADITIVO (ex: +4 Fire Rate):
-                weapon.weaponData.fireRateInterval += percentage; // Se percentage for 1 (100%)                
-            }
-        }
-    }
-
-    // 3. AUMENTO DE ALCANCE
-    public void IncreaseRangeMultiplier(float percentage)
+    // --- MÉTODOS DE UPGRADE ---
+    // (Estes agora funcionam porque operam no WeaponData clonado)
+    public void IncreaseDamage(float value) // Assumindo que 'value' é o valor a adicionar
     {
         foreach (GameObject weaponGO in equippedWeapons)
         {
-            WeaponController weapon = weaponGO.GetComponent<WeaponController>();
+            WeaponController weapon = weaponGO?.GetComponent<WeaponController>();
             if (weapon != null && weapon.weaponData != null)
             {
-                weapon.weaponData.range += percentage;
+                weapon.weaponData.damage += value;
             }
         }
     }
+    public void IncreaseFireRateMultiplier(float value) // Assumindo que 'value' é o valor a adicionar
+    {
+         foreach (GameObject weaponGO in equippedWeapons)
+         {
+             WeaponController weapon = weaponGO?.GetComponent<WeaponController>();
+             if (weapon != null && weapon.weaponData != null)
+             {
+                 // CUIDADO: FireRateInterval MAIOR = TIRO MAIS LENTO
+                 // Para aumentar a cadência, você precisa DIMINUIR o intervalo
+                 // ou AUMENTAR uma variável de "Tiros por Segundo"
+                 // A forma mais segura é AUMENTAR a frequência (Tiros por Segundo)
+                 weapon.weaponData.fireRateInterval += value; // Se 'value' for positivo, a cadência AUMENTA
+             }
+         }
+    }
+    public void IncreaseRangeMultiplier(float value) // Assumindo que 'value' é o valor a adicionar
+    {
+         foreach (GameObject weaponGO in equippedWeapons)
+         {
+             WeaponController weapon = weaponGO?.GetComponent<WeaponController>();
+             if (weapon != null && weapon.weaponData != null)
+             {
+                 weapon.weaponData.range += value;
+             }
+         }
+    }
+    // --- FIM UPGRADES ---
     
+    /// <summary>
+    /// Método chamado pela UI para obter a arma principal (para stats).
+    /// </summary>
     public GameObject GetEquippedWeapon(int index)
     {
-        if (index >= 0 && index < equippedWeapons.Count)
+        if (index >= 0 && index < equippedWeapons.Count && equippedWeapons[index] != null)
         {
             return equippedWeapons[index];
         }

@@ -124,7 +124,6 @@ public class BossUIHealth : MonoBehaviour
         UpdateHealthUI(bossLinker.CurrentHealth, bossLinker.initialTotalHealth);
         
         isInitialized = true;
-        Debug.Log("[BossUIHealth] Conexão com Linker estabelecida. UI Ativa.");
     }
 
     private void UpdateHealthUI(float currentHealth, float maxHealth)

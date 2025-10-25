@@ -219,6 +219,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  isGreaterBossPart: 0
 --- !u!114 &170300933
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -233,9 +234,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   placementRadius: 3.25
   weaponHolder: {fileID: 417133968}
+  damageMultiplier: 1
+  fireRateMultiplier: 1
+  rangeMultiplier: 1
   weaponPrefabsForTesting:
   - {fileID: 4156104687730460143, guid: 8ce34cdc240a0614c9ea837616d37421, type: 3}
-  startingWeaponPrefab: {fileID: 4156104687730460143, guid: d0d7b918784e04244b30c77168b36567, type: 3}
 --- !u!114 &2033299299
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -248,7 +251,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94085bdd8893e8b48ba8c43c8d923486, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  movementJoystick: {fileID: 0}
 --- !u!114 &321855162
 MonoBehaviour:
   m_ObjectHideFlags: 0

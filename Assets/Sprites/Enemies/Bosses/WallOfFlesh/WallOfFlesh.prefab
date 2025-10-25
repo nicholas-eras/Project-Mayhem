@@ -177,7 +177,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bafcf9e2d39b6b4d9986f879f9d4f7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  projectilePrefab: {fileID: 2390562463378662168, guid: 9afd70cba4184a44093d6fb1f67c14cd, type: 3}
+  projectilePrefab: {fileID: 2390562463378662168, guid: b4c184440ffbc454faa5030ab43490ea, type: 3}
   firePoint: {fileID: 6158497071229808491}
   projectileDamage: 5
   projectileSpeed: 10
@@ -785,7 +785,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94833a39658e2134589a76504ddff8f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  initialTotalHealth: 2000
+  initialTotalHealth: 5000
   OnBossDefeated:
     m_PersistentCalls:
       m_Calls: []
@@ -964,7 +964,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bafcf9e2d39b6b4d9986f879f9d4f7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  projectilePrefab: {fileID: 2390562463378662168, guid: 9afd70cba4184a44093d6fb1f67c14cd, type: 3}
+  projectilePrefab: {fileID: 2390562463378662168, guid: b4c184440ffbc454faa5030ab43490ea, type: 3}
   firePoint: {fileID: 6158497072193852059}
   projectileDamage: 5
   projectileSpeed: 10
@@ -1303,7 +1303,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bafcf9e2d39b6b4d9986f879f9d4f7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  projectilePrefab: {fileID: 2390562463378662168, guid: 9afd70cba4184a44093d6fb1f67c14cd, type: 3}
+  projectilePrefab: {fileID: 2390562463378662168, guid: b4c184440ffbc454faa5030ab43490ea, type: 3}
   firePoint: {fileID: 6158497072925265189}
   projectileDamage: 5
   projectileSpeed: 10
@@ -1781,7 +1781,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bafcf9e2d39b6b4d9986f879f9d4f7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  projectilePrefab: {fileID: 2390562463378662168, guid: 9afd70cba4184a44093d6fb1f67c14cd, type: 3}
+  projectilePrefab: {fileID: 2390562463378662168, guid: b4c184440ffbc454faa5030ab43490ea, type: 3}
   firePoint: {fileID: 6158497073097087936}
   projectileDamage: 5
   projectileSpeed: 10

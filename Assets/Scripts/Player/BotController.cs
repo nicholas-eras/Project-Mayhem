@@ -1,72 +1,261 @@
 using UnityEngine;
-using System.Collections.Generic;
-using System.Linq; // Para usar o OrderBy/Min/Max
+using System.Linq;
 
 public class BotController : MonoBehaviour
 {
     [Header("Stats de Movimento")]
     [SerializeField] private float baseMoveSpeed = 5f;
-    [SerializeField] private float currentMoveSpeed; // Herdado do PlayerController
+    private float currentMoveSpeed;
 
-    [Header("Comportamento de Fuga")]
-    [Tooltip("Raio para procurar e evitar inimigos.")]
+    [Header("Comportamento IA")]
+    [Tooltip("Raio para procurar inimigos.")]
     [SerializeField] private float threatDetectionRadius = 8f;
     [Tooltip("Camada onde os inimigos estão.")]
     [SerializeField] private LayerMask enemyLayer;
+    [Tooltip("O peso que 'ir para o centro' tem na decisão.")]
+    [SerializeField] private float centerSeekingWeight = 0.4f;
+    [Tooltip("A que distância o bot 'vê' uma parede.")]
+    [SerializeField] private float wallDetectionDistance = 2.5f;
 
+    [Header("Limites do Mapa")]
+    [SerializeField] private float botBoundsPadding = 0.5f;
+
+    [Header("Comportamento IA")]
+    // ... (suas outras variáveis)
+    [Tooltip("A que distância do centro o bot para de se mover (se não houver ameaças).")]
+    [SerializeField] private float centerStoppingDistance = 0.5f; // <-- ADICIONE ESTA LINHA
+
+    // --- Variáveis Internas da IA ---
     private Rigidbody2D rb;
     private Vector2 moveInput;
-    private Vector3 fleeDirection = Vector3.zero;
+    private bool boundsInitialized = false;
+    private Transform bottomLeftMarker;
+    private Transform topRightMarker;
+    private Vector2 mapCenter;
+
+    // Vetores para as 8 direções de "sondagem"
+    private Vector2[] candidateDirections;
+    // Scores de ameaça e interesse para debug no Gizmos
+    private float[] threatScores = new float[8];
+    private float[] interestScores = new float[8];
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        // Assumindo que a velocidade é inicializada por algum Manager ou é fixa
-        currentMoveSpeed = baseMoveSpeed; 
+        currentMoveSpeed = baseMoveSpeed;
     }
+
+    void Start()
+    {
+        InitializeBounds();
+        InitializeCandidateDirections();
+    }
+
+    // Inicializa os 8 vetores de direção
+    void InitializeCandidateDirections()
+    {
+        candidateDirections = new Vector2[8];
+        candidateDirections[0] = new Vector2( 0,  1).normalized; // N
+        candidateDirections[1] = new Vector2( 1,  1).normalized; // NE
+        candidateDirections[2] = new Vector2( 1,  0).normalized; // E
+        candidateDirections[3] = new Vector2( 1, -1).normalized; // SE
+        candidateDirections[4] = new Vector2( 0, -1).normalized; // S
+        candidateDirections[5] = new Vector2(-1, -1).normalized; // SW
+        candidateDirections[6] = new Vector2(-1,  0).normalized; // W
+        candidateDirections[7] = new Vector2(-1,  1).normalized; // NW
+    }
+
+    void InitializeBounds()
+    {
+        Transform mapBoundsParent = null;
+        GameObject boundsGO = GameObject.Find("--- MAP BOUNDS ---");
+        if (boundsGO != null)
+        {
+            mapBoundsParent = boundsGO.transform;
+        }
+        
+        if (mapBoundsParent == null)
+        {
+            Debug.LogWarning($"[BotController] '--- MAP BOUNDS ---' não encontrado.", this);
+            boundsInitialized = false;
+            return;
+        }
+
+        bottomLeftMarker = mapBoundsParent.Find("BottomLeft_Marker");
+        topRightMarker = mapBoundsParent.Find("TopRight_Marker");
+
+        if (bottomLeftMarker == null || topRightMarker == null)
+        {
+            Debug.LogError($"[BotController] Marcadores de Limite não encontrados.", mapBoundsParent);
+            boundsInitialized = false;
+        }
+        else
+        {
+            boundsInitialized = true;
+            // Calcula o centro do mapa UMA VEZ
+            mapCenter = (bottomLeftMarker.position + topRightMarker.position) / 2f;
+        }
+    }
+
 
     void Update()
     {
-        // A lógica de fuga é executada no Update para ser mais responsiva
-        FleeFromThreats();
+        // O "Cérebro" do Bot: Decide a melhor direção para ir
+        CalculateBestMoveDirection();
     }
 
     void FixedUpdate()
     {
-        // Aplica o movimento com base na direção calculada pela fuga
+        // O "Corpo" do Bot: Apenas se move na direção que o cérebro decidiu
+        // Não precisamos mais do Clamp aqui, pois a lógica de IA já evita as paredes.
         rb.MovePosition(rb.position + moveInput.normalized * currentMoveSpeed * Time.fixedDeltaTime);
     }
 
-    private void FleeFromThreats()
+    /// <summary>
+    /// O Cérebro da IA. Calcula os scores de Ameaça e Interesse para 8 direções.
+    /// </summary>
+    /// <summary>
+    /// O Cérebro da IA. Calcula os scores de Ameaça e Interesse para 8 direções.
+    /// </summary>
+    private void CalculateBestMoveDirection()
     {
-        // 1. Detectar ameaças próximas
-        Collider2D[] threats = Physics2D.OverlapCircleAll(transform.position, threatDetectionRadius, enemyLayer);
-
-        if (threats.Length > 0)
+        if (!boundsInitialized)
         {
-            Vector3 totalAvoidanceVector = Vector3.zero;
+            moveInput = Vector2.zero;
+            return;
+        }
+
+        Vector2 currentPosition = transform.position;
+        
+        // --- LÓGICA DE DISTÂNCIA E AMEAÇA (MOVIDA PARA CIMA) --- // <-- MUDANÇA
+        Vector2 dirToCenter = (mapCenter - currentPosition);
+        float distanceToCenter = dirToCenter.magnitude;
+        
+        Collider2D[] allThreats = Physics2D.OverlapCircleAll(currentPosition, threatDetectionRadius, enemyLayer);
+        bool hasEnemyThreats = allThreats.Length > 0;
+        // --- FIM DA MUDANÇA ---
+
+
+        // --- LÓGICA DE PARADA (A SOLUÇÃO) --- // <-- MUDANÇA
+        // Se NÃO houver inimigos E estivermos dentro da "zona de conforto" do centro...
+        if (!hasEnemyThreats && distanceToCenter <= centerStoppingDistance)
+        {
+            // ...a decisão é simples: PARAR.
+            moveInput = Vector2.zero;
             
-            // 2. Calcular o vetor de repulsão total
-            foreach (var threat in threats)
+            // Limpa os scores para o Gizmo não mostrar lixo
+            for(int i = 0; i < 8; i++) { threatScores[i] = 0; interestScores[i] = 0; }
+            
+            return; // Pula todo o resto do cálculo
+        }
+        // --- FIM DA MUDANÇA ---
+
+
+        // Se chegamos aqui, ou há inimigos, ou estamos longe do centro.
+        // O cálculo continua normalmente.
+
+        float bestScore = -Mathf.Infinity;
+        Vector2 bestDirection = Vector2.zero;
+
+        // 2. Itera por todas as 8 direções candidatas
+        for (int i = 0; i < candidateDirections.Length; i++)
+        {
+            Vector2 dir = candidateDirections[i];
+            
+            // --- A. CÁLCULO DE AMEAÇA (Threat) ---
+            float threat = 0f;
+
+            // A.1 Ameaça de Parede
+            Vector2 probePos = currentPosition + dir * wallDetectionDistance;
+            if (probePos.x < bottomLeftMarker.position.x + botBoundsPadding || 
+                probePos.x > topRightMarker.position.x - botBoundsPadding ||
+                probePos.y < bottomLeftMarker.position.y + botBoundsPadding || 
+                probePos.y > topRightMarker.position.y - botBoundsPadding)
             {
-                // Vetor do inimigo para o bot
-                Vector3 awayFromThreat = transform.position - threat.transform.position;
-                
-                // Normaliza e adiciona ao vetor total. 
-                // A força de repulsão é inversamente proporcional à distância (para evitar os mais próximos mais fortemente)
-                totalAvoidanceVector += awayFromThreat.normalized / awayFromThreat.magnitude;
+                threat = 1.0f; 
             }
 
-            // 3. Normaliza o vetor de fuga para obter o input (de -1 a 1)
-            moveInput = totalAvoidanceVector.normalized;
+            // A.2 Ameaça de Inimigo
+            if (threat < 1.0f && hasEnemyThreats) // <-- MUDANÇA (só calcula se 'hasEnemyThreats')
+            {
+                foreach (var enemy in allThreats)
+                {
+                    Vector2 dirToEnemy = (Vector2)enemy.transform.position - currentPosition;
+                    float distanceToEnemy = dirToEnemy.magnitude;
+                    
+                    if (distanceToEnemy > 0) // Evita divisão por zero
+                    {
+                        float dot = Vector2.Dot(dir, dirToEnemy.normalized);
+                        if (dot > 0.5) 
+                        {
+                            float enemyThreat = (1.0f - (distanceToEnemy / threatDetectionRadius)) * dot;
+                            if (enemyThreat > threat)
+                            {
+                                threat = enemyThreat; 
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // --- B. CÁLCULO DE INTERESSE (Interest) ---
+            float interest = 0f;
+            
+            // B.1 Interesse do Centro
+            // O bot SÓ se interessa pelo centro se NÃO houver inimigos.
+            // Se houver inimigos, a única prioridade é fugir (interesse = 0).
+            if (!hasEnemyThreats) // <-- MUDANÇA
+            {
+                Vector2 dirToCenterNormalized = dirToCenter.normalized;
+                float centerDot = Vector2.Dot(dir, dirToCenterNormalized);
+                if (centerDot > 0)
+                {
+                    interest = centerDot * centerSeekingWeight;
+                }
+            }
+            
+            // --- C. DECISÃO FINAL ---
+            float finalScore = interest - threat;
+            
+            threatScores[i] = threat;
+            interestScores[i] = interest;
+
+            if (finalScore > bestScore)
+            {
+                bestScore = finalScore;
+                bestDirection = dir;
+            }
         }
-        else
-        {
-            // Se não houver ameaças, o Bot pode ficar parado ou seguir o Player principal (opcional)
-            moveInput = Vector2.zero;
-        }
+
+        moveInput = bestDirection;
     }
-    
-    // O BotController deve ter as funções de upgrade do PlayerController se você quiser que ele receba upgrades
-    // Ex: public void IncreaseSpeedMultiplier(float percentage) { currentMoveSpeed *= (1f + percentage); }
+
+    // --- GIZMO DE DEBUG (O CÉREBRO) ---
+    void OnDrawGizmosSelected()
+    {
+        if (candidateDirections == null) return;
+
+        // Desenha o "Cérebro" do Bot
+        for (int i = 0; i < candidateDirections.Length; i++)
+        {
+            Vector2 dir = candidateDirections[i];
+            float threat = threatScores[i];
+            float interest = interestScores[i];
+
+            // A cor final é uma mistura de Ameaça (Vermelho) e Interesse (Verde)
+            // Se a ameaça for 1.0 (parede), a cor é Vermelho Sólido.
+            Color gizmoColor = new Color(threat, interest / centerSeekingWeight, 0);
+
+            Gizmos.color = gizmoColor;
+            Gizmos.DrawRay(transform.position, dir * 2.0f);
+        }
+        
+        // Desenha a direção final escolhida em AZUL
+        Gizmos.color = Color.blue;
+        Gizmos.DrawRay(transform.position, moveInput.normalized * 3.0f); // Raio azul mais longo
+
+        // Desenha o raio de detecção
+        Gizmos.color = Color.gray;
+        Gizmos.DrawWireSphere(transform.position, threatDetectionRadius);
+    }
 }

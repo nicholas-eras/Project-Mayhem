@@ -37,6 +37,7 @@ public class HealthSystem : MonoBehaviour
     [Tooltip("Se for True, a vida será vinculada ao BossHealthLinker.")]
     [SerializeField] private bool isGreaterBossPart = false;
     private BossHealthLinker healthLinker;
+    [HideInInspector] public bool IsBotAgent = false; // Flag que sobrevive à desativação
 
     // --- NOVO: Variáveis para a lógica de morte do Jogador ---
     private bool isDead = false; // Flag para prevenir morte dupla
@@ -256,58 +257,75 @@ public class HealthSystem : MonoBehaviour
         GetComponent<PlayerController>().enabled = true;
         GetComponent<PlayerWeaponManager>().enabled = true;
 
+        if (IsBotAgent) // <-- MUDANÇA
+        {
+            GetComponent<PlayerController>().enabled = false;
+            GetComponent<BotController>().enabled = true;
+        }
+        else // É um Humano
+        {
+            GetComponent<PlayerController>().enabled = true;
+            GetComponent<BotController>().enabled = false;
+        }
+
         // 4. Opcional: move o jogador para um ponto de spawn seguro
         transform.position = Vector3.zero; 
-
-        Debug.Log("[Player] Jogador resetado para tentar novamente.");
     }
 
-
-    // --- MUDANÇA: LÓGICA 'DIE()' SEPARADA ---
+// DENTRO DE HealthSystem.cs -> Die()
     private void Die()
     {
-        // 1. Prevenir morte dupla
         if (isDead) return;
         isDead = true;
 
-        // 2. Lógica de Morte específica
-        if (isPlayer)
+        // Verifica se é Player (pela tag) OU se tem o componente BotController
+        bool isPlayerOrBot = gameObject.CompareTag("Player") || GetComponent<BotController>() != null;
+
+        if (isPlayerOrBot)
         {
-            // --- É O JOGADOR ---
-            Debug.Log("Jogador Morreu! Verificando se era wave de Boss...");
-            
-            bool wasBossWave = false;
-            if (waveManager != null)
+            // --- É O JOGADOR OU BOT ---
+            // Tenta pegar os componentes
+            PlayerController pc = GetComponent<PlayerController>();
+            BotController bc = GetComponent<BotController>();
+            PlayerWeaponManager pwm = GetComponent<PlayerWeaponManager>();
+
+            // Desativa os componentes SE eles existirem
+            if (pc != null) pc.enabled = false;
+            if (bc != null) bc.enabled = false;
+            if (pwm != null) pwm.enabled = false;
+
+            // Toca o som de morte, se houver
+            if (!string.IsNullOrEmpty(deathSoundName))
             {
-                // Pergunta ao WaveManager se a wave atual é um boss
-                // (Requer a propriedade 'IsCurrentWaveGreaterBoss' no WaveManager)
-                wasBossWave = waveManager.IsCurrentWaveGreaterBoss; 
+                AudioManager.Instance?.PlaySFX(deathSoundName);
             }
 
-            // Chama o GameOver correto DIRETAMENTE no GameManager
-            GameManager.Instance.GameOver(wasBossWave);
-            
-            // IMPORTANTE: Não chamamos OnDeath?.Invoke() para o jogador,
-            // pois ele está ligado no Inspector ao GameOver() antigo (sem parâmetro).
+            // Desativa o GameObject. Isso chamará OnDisable() no PlayerTargetable,
+            // que avisará o PlayerManager.
+            gameObject.SetActive(false);
         }
-        else
+        else // É um Inimigo (Não Player nem Bot)
         {
             // --- É UM INIMIGO ---
-            OnDeath?.Invoke(); // Dispara o evento (para loot, contagem de wave, etc.)
+            OnDeath?.Invoke(); // Dispara evento para loot, etc.
+
+            if (!string.IsNullOrEmpty(deathSoundName))
+            {
+                 AudioManager.Instance?.PlaySFX(deathSoundName);
+            }
 
             EnemyController enemyController = GetComponent<EnemyController>();
             if (enemyController != null)
             {
-                enemyController.Die();
+                enemyController.Die(); // O EnemyController cuida do efeito de morte e Destroy
             }
             else
             {
-                // Se não tiver script de inimigo, apenas destrói
-                Destroy(gameObject);
+                Destroy(gameObject); // Fallback: Apenas destrói
             }
         }
     }
-
+    
     public void Heal(float amount)
     {
         currentHealth += amount;

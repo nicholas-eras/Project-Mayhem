@@ -2,50 +2,77 @@ using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
-    [Header("Referências")]
-    [Tooltip("Arraste o objeto do Jogador para este campo.")]
-    public Transform target;
-    [Tooltip("Arraste o marcador do canto inferior esquerdo do mapa.")]
-    public Transform minBounds; // NOVO: Marcador de limite mínimo
-    [Tooltip("Arraste o marcador do canto superior direito do mapa.")]
-    public Transform maxBounds; // NOVO: Marcador de limite máximo
+    [Header("Referências")]
+    [Tooltip("Arraste o objeto do Jogador para este campo.")]
+    public Transform target; // Vamos manter público para debug, mas usaremos o método abaixo
+    [Tooltip("Arraste o marcador do canto inferior esquerdo do mapa.")]
+    public Transform minBounds; 
+    [Tooltip("Arraste o marcador do canto superior direito do mapa.")]
+    public Transform maxBounds; 
 
-    [Header("Configuração")]
-    [Tooltip("Quão suave será o movimento da câmera. Valores menores = mais lento e suave.")]
-    [Range(0.01f, 1.0f)]
-    public float smoothSpeed = 0.125f;
-    
-    // Variáveis para guardar o tamanho da câmera
-    private float halfHeight;
-    private float halfWidth;
-    private Camera cam;
+    [Header("Configuração")]
+    [Tooltip("Quão suave será o movimento da câmera. Valores menores = mais lento e suave.")]
+    [Range(0.01f, 1.0f)]
+    public float smoothSpeed = 0.125f;
+    
+    private float halfHeight;
+    private float halfWidth;
+    private Camera cam;
 
-    void Start()
+    void Start()
+    {
+        cam = GetComponent<Camera>();
+        halfHeight = cam.orthographicSize;
+        halfWidth = halfHeight * cam.aspect;
+    }
+    
+    // --- NOVO MÉTODO PÚBLICO ---
+    /// <summary>
+    /// Chamado pelo PlayerSpawner para dizer à câmera quem seguir.
+    /// </summary>
+    public void AssignTarget(Transform newTarget)
     {
-        cam = GetComponent<Camera>();
-        // Calcula a altura e largura da visão da câmera em unidades do mundo
-        halfHeight = cam.orthographicSize;
-        halfWidth = halfHeight * cam.aspect;
+        target = newTarget;
     }
+    // --- FIM DO NOVO MÉTODO ---
 
-    void LateUpdate()
+    void LateUpdate()
+    {
+        // MODIFICADO: Adicionada checagem para target (pois ele começa nulo)
+        if (target == null)
+        {
+            // Se o jogador morrer e for destruído, ou ainda não foi assignado
+            return; 
+        }
+        
+        if (minBounds == null || maxBounds == null)
+        {
+            Debug.LogWarning("Limites da câmera (MinBounds/MaxBounds) não configurados!");
+            FollowWithoutBounds(); // Segue o jogador sem limites
+            return;
+        }
+
+        // 1. CALCULAR A POSIÇÃO IDEAL
+        Vector3 desiredPosition = new Vector3(target.position.x, target.position.y, transform.position.z);
+        Vector3 smoothedPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed);
+        
+        // 2. APLICAR OS LIMITES (Clamping)
+        float clampedX = Mathf.Clamp(smoothedPosition.x, minBounds.position.x + halfWidth, maxBounds.position.x - halfWidth);
+        float clampedY = Mathf.Clamp(smoothedPosition.y, minBounds.position.y + halfHeight, maxBounds.position.y - halfHeight);
+
+        // 3. APLICAR A POSIÇÃO FINAL E SEGURA
+        transform.position = new Vector3(clampedX, clampedY, transform.position.z);
+    }
+
+    // --- NOVO MÉTODO DE FALLBACK ---
+    /// <summary>
+    /// Método de emergência para seguir o jogador se os limites não estiverem definidos.
+    /// </summary>
+    private void FollowWithoutBounds()
     {
-        if (target == null || minBounds == null || maxBounds == null)
-        {
-            return;
-        }
-
-        // 1. CALCULAR A POSIÇÃO IDEAL (como antes)
         Vector3 desiredPosition = new Vector3(target.position.x, target.position.y, transform.position.z);
         Vector3 smoothedPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed);
-        
-        // 2. APLICAR OS LIMITES (Clamping)
-        // Criamos os limites para o *centro* da câmera, levando em conta seu tamanho.
-        float clampedX = Mathf.Clamp(smoothedPosition.x, minBounds.position.x + halfWidth, maxBounds.position.x - halfWidth);
-        float clampedY = Mathf.Clamp(smoothedPosition.y, minBounds.position.y + halfHeight, maxBounds.position.y - halfHeight);
-
-        // 3. APLICAR A POSIÇÃO FINAL E SEGURA
-        transform.position = new Vector3(clampedX, clampedY, transform.position.z);
+        transform.position = smoothedPosition;
     }
 
     // (Opcional, mas MUITO útil) Desenha os limites da câmera na Scene View para facilitar o debug

@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using UnityEngine.SceneManagement; // Necessário para carregar a cena
+using UnityEngine.SceneManagement; 
+using Unity.Netcode;                
 
 public class MapSelectorUI : MonoBehaviour
 {
@@ -14,25 +15,52 @@ public class MapSelectorUI : MonoBehaviour
     public void Setup(MapData data)
     {
         currentMapData = data;
-        
         mapImage.sprite = data.mapSprite;
         mapNameText.text = data.mapName;
         
-        // Adiciona o listener para o botão de seleção
+        selectButton.onClick.RemoveAllListeners(); 
         selectButton.onClick.AddListener(OnMapSelected);
     }
 
     private void OnMapSelected()
     {
-        // 1. Salvar o nome da cena a ser carregada (Opcional, mas útil se o Manager precisar saber)
+        // ... (verificações de currentMapData) ...
         PlayerPrefs.SetString("SelectedGameScenePath", currentMapData.gameScenePath);
-        
-        // 2. Carregar a cena do jogo
-        // NOTA: A cena 'Game' DEVE estar nas Build Settings!
-        // Como você forneceu o caminho completo, usaremos o método por string.
-        SceneManager.LoadScene(currentMapData.gameScenePath);
-        
-        // Se a cena Game tiver o mesmo nome em todas as pastas, você pode usar:
-        // SceneManager.LoadScene(currentMapData.mapName + "/Game");
+
+        GameMode mode = GameMode.SinglePlayer;
+        if (GameModeManager.Instance != null) mode = GameModeManager.Instance.CurrentMode;
+
+        if (mode == GameMode.Multiplayer)
+        {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost)
+            {
+                // --- AQUI ESTÁ A MUDANÇA ---
+                // 1. Pede ao LobbyManager para salvar os dados ANTES de sair da cena
+                if (LobbyManager.Instance != null)
+                {
+                    LobbyManager.Instance.CacheLobbyDataForSceneLoad();
+                }
+                else
+                {
+                    Debug.LogError("LobbyManager.Instance não encontrado! Não foi possível salvar os dados do lobby.");
+                    // Considerar não carregar a cena se isso for crítico
+                }
+                // --- FIM DA MUDANÇA ---
+
+                // 2. Carrega a cena para todos (como antes)
+                NetworkManager.Singleton.SceneManager.LoadScene(currentMapData.gameScenePath, LoadSceneMode.Single);
+            }
+        }
+        else // Single Player
+        {
+            // --- ADICIONAL SINGLE PLAYER ---
+            // Simula o salvamento de dados para o jogador 1
+            int skinId = PlayerPrefs.GetInt("SlotSkinID_0", 0); // Pega a skin do Slot 0
+            LobbyData.SlotStates = new SlotState[] { SlotState.Human, SlotState.Empty, SlotState.Empty, SlotState.Empty };
+            LobbyData.SkinIDs = new int[] { skinId, 0, 0, 0 };
+            // --- FIM ADICIONAL ---
+            SceneManager.LoadScene(currentMapData.gameScenePath);
+        }
     }
+    
 }

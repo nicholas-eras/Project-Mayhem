@@ -1,9 +1,9 @@
-// UIManager.cs
+// PlayerHUDUI.cs
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class UIManager : MonoBehaviour
+public class PlayerHUDUI : MonoBehaviour
 {
     [Header("UI References")]
     [SerializeField] private Slider healthBar;
@@ -13,6 +13,7 @@ public class UIManager : MonoBehaviour
 
     [Header("Player References")]
     [SerializeField] private HealthSystem playerHealth;
+    private PlayerWallet playerWallet; // <--- Referência de instância
 
     // This will hold the specific instance of WaveManager for this scene.
     private WaveManager currentWaveManager;
@@ -25,37 +26,65 @@ public class UIManager : MonoBehaviour
             this.currentWaveManager.OnNewWaveStarted += UpdateWaveCounter;
         }
     }
-    
-    void OnEnable()
+
+    // NOVO MÉTODO PARA O AgentManager CHAMAR
+    public void ConnectWallet(PlayerWallet wallet)
     {
-        if (playerHealth != null)
+        // Limpeza: Desinscreve-se da carteira antiga, se houver
+        if (playerWallet != null)
         {
-            playerHealth.OnHealthChanged += UpdateHealthBar;
+            playerWallet.OnMoneyChanged -= UpdateCoinCounter;
         }
-        // Assuming PlayerWallet is still static. If not, it needs the same treatment.
-        PlayerWallet.OnMoneyChanged += UpdateCoinCounter;
+
+        // Assina a nova carteira
+        this.playerWallet = wallet;
+        if (this.playerWallet != null)
+        {
+            this.playerWallet.OnMoneyChanged += UpdateCoinCounter;
+
+            // Atualiza o contador imediatamente
+            UpdateCoinCounter(this.playerWallet.CurrentMoney);
+        }
     }
 
-    void OnDisable()
+    
+    void OnDestroy() // Usa OnDestroy para garantir a limpeza
     {
-        if (playerHealth != null)
-        {
-            playerHealth.OnHealthChanged -= UpdateHealthBar;
-        }
-        PlayerWallet.OnMoneyChanged -= UpdateCoinCounter;
-
-        // We also need to unsubscribe from the WaveManager event.
         if (this.currentWaveManager != null)
         {
             this.currentWaveManager.OnNewWaveStarted -= UpdateWaveCounter;
         }
-    }
+        if (playerHealth != null)
+        {
+            playerHealth.OnHealthChanged -= UpdateHealthBar;
+        }
+        // --- LIMPA A INSCRIÇÃO DA CARTEIRA ---
+        if (playerWallet != null)
+        {
+            playerWallet.OnMoneyChanged -= UpdateCoinCounter;
+        }
+        // --- FIM DA LIMPEZA ---
+    }    
 
     private void UpdateWaveCounter(string waveName)
     {
         if (waveCounterText != null)
         {
             waveCounterText.text = waveName;
+        }
+    }
+
+    // Conecta a vida (você pode mover a lógica de vida para um método de conexão também)
+    public void ConnectHealth(HealthSystem health)
+    {
+        if (playerHealth != null)
+        {
+             playerHealth.OnHealthChanged -= UpdateHealthBar;
+        }
+        this.playerHealth = health;
+        if (this.playerHealth != null)
+        {
+             this.playerHealth.OnHealthChanged += UpdateHealthBar;
         }
     }
 

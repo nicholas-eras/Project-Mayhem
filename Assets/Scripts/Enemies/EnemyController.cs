@@ -51,16 +51,32 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private float payloadScale = 1.0f; // Novo campo para escala
     private GameObject currentActivePayloadInstance;
 
-    private SpriteRenderer enemyRenderer; 
+    private SpriteRenderer enemyRenderer;
 
     [Tooltip("Marque se esta é uma parte do chefe principal que compartilha vida.")]
     public bool isGreaterBoss = false; // <--- NOVA FLAG AQUI!
+    
+    // --- VARIÁVEIS DE ALVO MODIFICADAS ---
+    private EnemyShooter enemyShooter; // Referência para o script de tiro
+    
+    [Header("Configuração de Alvo (IA)")]
+    [Tooltip("Com que frequência (em segundos) o inimigo reavalia qual jogador está mais próximo.")]
+    [SerializeField] private float targetCheckInterval = 1.0f; // <-- NOVO
+    private float nextTargetCheckTime;
+
+    void Awake() // <-- NOVO MÉTODO AWAKE
+    {
+        // Pega as referências internas
+        enemyRenderer = GetComponent<SpriteRenderer>();
+        enemyShooter = GetComponent<EnemyShooter>();
+    }    
 
     void Start()
     {
-        ChooseRandomTarget();
         ActivateActivePayload();
-        enemyRenderer = GetComponent<SpriteRenderer>();
+        // --- NOVO: Inicializa o timer ---
+        // Força uma verificação de alvo no primeiro frame
+        nextTargetCheckTime = Time.time;
     }
 
     // Função de Morte Chamada pelo HealthSystem
@@ -105,23 +121,23 @@ public class EnemyController : MonoBehaviour
     {
         if (activePayloadPrefab == null) return;
         if (currentActivePayloadInstance != null) return;
-        
+
         // 1. Instancia o prefab de efeito (que contém AreaEffectZone e Collider) como FILHO
         // Isso garante que ele se mova com o inimigo.
         GameObject payloadGO = Instantiate(activePayloadPrefab, transform.position, Quaternion.identity, transform);
         currentActivePayloadInstance = payloadGO;
-        
+
         // 2. Ajusta a escala do prefab
         payloadGO.transform.localScale = Vector3.one * payloadScale;
 
         // === GARANTIA DE ORDEM DE RENDERIZAÇÃO (FRENTE) ===
         // 1. Obtém todos os Renderers no payload (pode ser Sprite ou ParticleSystem)
         Renderer[] payloadRenderers = payloadGO.GetComponentsInChildren<Renderer>();
-        
+
         // 2. Garante que o inimigo tem um renderer para comparação
-        if (enemyRenderer == null) 
+        if (enemyRenderer == null)
         {
-            enemyRenderer = GetComponent<SpriteRenderer>(); 
+            enemyRenderer = GetComponent<SpriteRenderer>();
         }
 
         if (enemyRenderer != null)
@@ -130,9 +146,9 @@ public class EnemyController : MonoBehaviour
             {
                 // Copia a Sorting Layer
                 payloadRenderer.sortingLayerID = enemyRenderer.sortingLayerID;
-                
+
                 // Define uma ordem maior para garantir que seja desenhado na frente (ex: +10)
-                payloadRenderer.sortingOrder = enemyRenderer.sortingOrder + 10; 
+                payloadRenderer.sortingOrder = enemyRenderer.sortingOrder + 10;
             }
         }
         else
@@ -152,12 +168,27 @@ public class EnemyController : MonoBehaviour
             // Chamando Setup para definir a duração para um valor alto (ex: 9999) 
             // ou usando uma sobrecarga que diz 'nao destruir'.
             // Vamos usar Setup(9999f) para simular uma duracao "infinita" enquanto o inimigo vive.
-            effectZone.Setup(9999f); 
+            effectZone.Setup(9999f);
         }
     }
+    
     void Update()
     {
-        if (playerTarget == null) return;
+        // --- LÓGICA DE ALVO MODIFICADA ---
+        // 1. Verifica se é hora de reavaliar o alvo
+        if (Time.time >= nextTargetCheckTime)
+        {
+            FindClosestTarget();
+            nextTargetCheckTime = Time.time + targetCheckInterval;
+        }
+        // --- FIM DA MODIFICAÇÃO ---
+
+        // A lógica de movimento existente agora roda após a checagem
+        if (playerTarget == null)
+        {
+            // Se NÃO houver alvos (PlayerManager vazio ou player morto), fica parado.
+            return; 
+        }
 
         // 1. Calcular a distância atual até o jogador
         float distanceToPlayer = Vector2.Distance(transform.position, playerTarget.position);
@@ -166,11 +197,8 @@ public class EnemyController : MonoBehaviour
         if (distanceToPlayer > stopDistance)
         {
             float step = moveSpeed * Time.deltaTime;
-            // Move o inimigo em direção ao jogador
             transform.position = Vector2.MoveTowards(transform.position, playerTarget.position, step);
         }
-        // Nota: Se a distância for menor ou igual a stopDistance, o inimigo fica parado,
-        // permitindo que o EnemyShooter cuide do tiro.
     }
 
     // Esta é a única função de dano necessária para colisões.
@@ -202,6 +230,27 @@ public class EnemyController : MonoBehaviour
             
             // Ou se quiser o MAIS PRÓXIMO:
             playerTarget = possibleTargets.OrderBy(t => Vector3.Distance(t.transform.position, transform.position)).First().transform;
+        }
+    }
+
+    /// <summary>
+    /// Novo método que usa o PlayerManager para encontrar o alvo mais próximo.
+    /// </summary>
+    private void FindClosestTarget() // <-- NOVO MÉTODO
+    {
+        if (PlayerManager.Instance == null)
+        {
+            // PlayerManager ainda não acordou ou não existe na cena
+            return;
+        }
+
+        // Pergunta ao Manager qual é o jogador mais próximo
+        playerTarget = PlayerManager.Instance.GetClosestPlayer(transform.position);
+        
+        // Informa o script de tiro (se houver) sobre o novo alvo
+        if (enemyShooter != null)
+        {
+            enemyShooter.playerTarget = playerTarget;
         }
     }
 
