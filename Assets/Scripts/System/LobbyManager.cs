@@ -1,248 +1,368 @@
 using UnityEngine;
-using System.Collections.Generic; // Para List<>
-using Unity.Netcode; // <-- Adicione para checar Host/Cliente
+using System.Collections.Generic;
+using Unity.Netcode;
+using Unity.Collections; // Para FixedString
+using System.Linq; // <-- ADICIONE ESTA LINHA
 
-public class LobbyManager : MonoBehaviour
+// 1. Mude para NetworkBehaviour
+public class LobbyManager : NetworkBehaviour
 {
-    public static LobbyManager Instance { get; private set; } // Singleton
+    public static LobbyManager Instance { get; private set; }
 
     [Header("Referências")]
-    [Tooltip("Arraste o Asset 'SkinDatabase'.")]
     [SerializeField] private SkinDatabase skinDatabase;
-    [Tooltip("Arraste os 4 GameObjects 'SlotUI' filhos do SlotContainer.")]
-    [SerializeField] private List<SlotUI> slotUIs; // Deve ter exatamente 4
+    [SerializeField] private List<SlotUI> slotUIs;
 
-    // --- ESTADO DO LOBBY (SIMULADO POR ENQUANTO) ---
-    private SlotState[] slotStates = new SlotState[4];
-    private string[] playerNames = new string[4]; // Nomes dos jogadores (se Humano)
+    // 2. Defina uma struct para os dados do slot (é mais limpo)
+    // INetworkSerializable permite que ela seja enviada pela rede
+    public struct LobbySlotData : INetworkSerializable, System.IEquatable<LobbySlotData>
+    {
+        public SlotState State;
+        public FixedString64Bytes PlayerName; // Use FixedString em vez de string
+        public int SkinID;
+        public ulong ClientId; // Para saber quem é o dono do slot
 
-    // --- FIM DA SIMULAÇÃO ---
+        public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+        {
+            serializer.SerializeValue(ref State);
+            serializer.SerializeValue(ref PlayerName);
+            serializer.SerializeValue(ref SkinID);
+            serializer.SerializeValue(ref ClientId);
+        }
+
+        // Necessário para a NetworkList
+        public bool Equals(LobbySlotData other)
+        {
+            return State == other.State &&
+                   PlayerName == other.PlayerName &&
+                   SkinID == other.SkinID &&
+                   ClientId == other.ClientId;
+        }
+    }
+
+    // 3. Use uma NetworkList para sincronizar o estado
+    // Esta lista é a "fonte da verdade" e só pode ser alterada pelo Host.
+    private NetworkList<LobbySlotData> networkSlots;
 
     private void Awake()
     {
-        // Singleton
-        if (Instance != null && Instance != this) Destroy(this);
+        if (Instance != null && Instance != this) Destroy(gameObject);
         else Instance = this;
+        networkSlots = new NetworkList<LobbySlotData>();
     }
 
-    void Start()
+    // 4. OnNetworkSpawn é chamado quando o objeto entra na rede
+    // Em LobbyManager.cs
+
+    public override void OnNetworkSpawn()
     {
-        if (slotUIs == null || slotUIs.Count != 4)
+        if (IsHost)
         {
-            Debug.LogError("LobbyManager: Configure a lista 'Slot UIs' com exatamente 4 slots!", this);
-            return;
-        }
-        if (skinDatabase == null)
-        {
-             Debug.LogError("LobbyManager: SkinDatabase não configurado!", this);
-            return;
+            networkSlots.Clear(); // Limpa sempre
+
+            // --- SUBSTITUA A LÓGICA DE RESTAURO PELA SEGUINTE ---
+
+            // Verifica se temos uma configuração de lobby guardada
+            if (GameManager.Instance != null && GameManager.Instance.LastLobbySlotStates != null)
+            {
+                // ESTAMOS A VOLTAR AO LOBBY
+                Debug.Log("[LobbyManager] A restaurar estado do lobby guardado (incluindo skins de clientes).");
+
+                var states = GameManager.Instance.LastLobbySlotStates;
+                var skins = GameManager.Instance.LastLobbySkinIDs;
+                var clientIds = GameManager.Instance.LastLobbyClientIds;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    SlotState state = states[i];
+                    int skin = skins[i];
+                    ulong clientId = clientIds[i]; // O ClientId guardado
+
+                    if (i == 0) // Slot 0 (Host)
+                    {
+                        networkSlots.Add(new LobbySlotData
+                        {
+                            State = SlotState.Human,
+                            PlayerName = "Host",
+                            SkinID = skin, // Restaura a skin do Host
+                            ClientId = NetworkManager.Singleton.LocalClientId
+                        });
+                    }
+                    else if (state == SlotState.Bot) // Era um Bot
+                    {
+                        networkSlots.Add(new LobbySlotData
+                        {
+                            State = SlotState.Bot,
+                            PlayerName = "Bot",
+                            SkinID = skin, // Restaura a skin do Bot
+                            ClientId = 0
+                        });
+                    }
+                    else if (state == SlotState.Human) // Era um Cliente
+                    {
+                        // Verifica se o cliente com aquele ID guardado AINDA está ligado
+                        if (NetworkManager.Singleton.ConnectedClientsIds.Contains(clientId))
+                        {
+                            // Sim, ele ainda está cá. Restaura-o com a skin!
+                            networkSlots.Add(new LobbySlotData
+                            {
+                                State = SlotState.Human,
+                                PlayerName = $"Jogador {clientId}",
+                                SkinID = skin, // RESTAURA A SKIN DO CLIENTE
+                                ClientId = clientId
+                            });
+                        }
+                        else
+                        {
+                            // O cliente (dono daquele slot) saiu. Adiciona um slot vazio.
+                            networkSlots.Add(new LobbySlotData { State = SlotState.Empty });
+                        }
+                    }
+                    else // Era um slot vazio
+                    {
+                        networkSlots.Add(new LobbySlotData { State = SlotState.Empty });
+                    }
+                }
+
+                // Limpa a memória
+                GameManager.Instance.LastLobbySlotStates = null;
+                GameManager.Instance.LastLobbySkinIDs = null;
+                GameManager.Instance.LastLobbyClientIds = null;
+            }
+            else
+            {
+                // ESTAMOS A INICIAR O LOBBY (Primeira vez)
+                Debug.Log("[LobbyManager] A criar novo estado de lobby.");
+
+                // Slot 0 é o Host (com skin padrão)
+                networkSlots.Add(new LobbySlotData
+                {
+                    State = SlotState.Human,
+                    PlayerName = "Host",
+                    SkinID = 0,
+                    ClientId = NetworkManager.Singleton.LocalClientId
+                });
+                // Slots 1, 2, 3 começam vazios
+                for (int i = 1; i < 4; i++)
+                {
+                    networkSlots.Add(new LobbySlotData { State = SlotState.Empty });
+                }
+            }
+
+            // --- FIM DA SUBSTITUIÇÃO ---
+
+            // Escuta por NOVAS conexões de clientes
+            NetworkManager.Singleton.OnClientConnectedCallback -= HandleClientConnected;
+            NetworkManager.Singleton.OnClientConnectedCallback += HandleClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= HandleClientDisconnect;
+            NetworkManager.Singleton.OnClientDisconnectCallback += HandleClientDisconnect;
         }
 
-        // Inicializa cada SlotUI
+        // TODOS (Host e Clientes) se inscrevem no evento de mudança da lista
+        networkSlots.OnListChanged -= OnNetworkListChanged;
+        networkSlots.OnListChanged += OnNetworkListChanged;
+
+        InitializeAllSlotUIs();
+        RefreshAllSlotDisplays();
+    }    
+
+    // 6.b. Desliga os callbacks quando o Host sai
+    public override void OnNetworkDespawn()
+    {
+        // Limpa as inscrições de eventos
+        if (IsHost)
+        {
+            NetworkManager.Singleton.OnClientConnectedCallback -= HandleClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= HandleClientDisconnect;
+        }
+        networkSlots.OnListChanged -= OnNetworkListChanged;
+    }
+
+    // 7. A UI é atualizada SEMPRE que a lista muda
+    private void OnNetworkListChanged(NetworkListEvent<LobbySlotData> changeEvent)
+    {
+        RefreshAllSlotDisplays();
+    }
+
+    // Configuração inicial da UI (apenas 1 vez)
+    private void InitializeAllSlotUIs()
+    {
         for (int i = 0; i < slotUIs.Count; i++)
         {
             if (slotUIs[i] != null)
             {
-                slotUIs[i].Initialize(i, skinDatabase);
+                // Passa o SkinDatabase E uma referência a este LobbyManager
+                // para o SlotUI poder chamar de volta (ex: OnChangeSkin)
+                // Assumindo que você vai modificar o SlotUI.Initialize
+                slotUIs[i].Initialize(i, skinDatabase/*, this*/); 
             }
         }
     }
 
-    /// <summary>
-    /// Configura o estado inicial do lobby (simplificado).
-    /// </summary>
-    private void InitializeLobbyState()
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            slotStates[i] = SlotState.Empty;
-            playerNames[i] = "";
-        }
-
-        // Se a rede está ativa e somos o Host OU se a rede não está ativa (Single Player implícito)
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost || NetworkManager.Singleton == null)
-        {
-            slotStates[0] = SlotState.Human;
-            playerNames[0] = "JogadorHost"; // Placeholder
-        }
-        // (Clientes terão seu slot preenchido quando conectarem - lógica futura)
-    }
-
-    /// <summary>
-    /// Verifica se o jogador local é o Host da sessão.
-    /// </summary>
-    public bool IsLocalPlayerHost() // <-- NOVO HELPER
-    {
-        // Retorna true se a rede está ativa e somos o Host, OU se a rede não está ativa
-        return (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost) || NetworkManager.Singleton == null;
-    }
-
-    /// <summary>
-    /// Chamado pelo SlotUI quando um slot é clicado.
-    /// </summary>
-    public void HandleSlotClick(int slotIndex) // <-- NOVO MÉTODO
-    {
-        // 1. Verifica Permissões: Só o Host pode clicar, e não no próprio slot.
-        if (!IsLocalPlayerHost() || slotIndex == 0)
-        {
-            return;
-        }
-
-        // 2. Verifica Estado Atual: Só pode alternar se estiver Vazio ou Bot.
-        if (slotStates[slotIndex] == SlotState.Human)
-        {
-            return; // Não pode chutar ou transformar humano em bot por aqui
-        }
-
-        // 3. Alterna o Estado: Vazio -> Bot, Bot -> Vazio
-        if (slotStates[slotIndex] == SlotState.Empty)
-        {
-            slotStates[slotIndex] = SlotState.Bot;
-            playerNames[slotIndex] = ""; // Garante que não tenha nome
-        }
-        else if (slotStates[slotIndex] == SlotState.Bot)
-        {
-            slotStates[slotIndex] = SlotState.Empty;
-        }
-
-        // 4. Atualiza a UI de TODOS os slots
-        UpdateAllSlotDisplays();
-    }
-
-
-    public void UpdateAllSlotDisplays()
+    private void RefreshAllSlotDisplays()
     {
         for (int i = 0; i < slotUIs.Count; i++)
         {
-            if (slotUIs[i] != null)
+            if (slotUIs[i] != null && i < networkSlots.Count)
             {
+                LobbySlotData data = networkSlots[i];
                 bool canControl = ShouldLocalPlayerControlSlot(i);
-                slotUIs[i].UpdateSlotDisplay(slotStates[i], playerNames[i], canControl);
+
+                // ATUALIZE ESTA LINHA:
+                slotUIs[i].UpdateSlotDisplay(data.State, data.PlayerName.ToString(), canControl, data.SkinID);
             }
+        }
+    }    
+    
+    /// <summary>
+    /// Chamado pelo SlotUI quando o jogador (dono do slot) muda a skin
+    /// </summary>
+    public void OnPlayerChangeSkin(int slotIndex, int newSkinID)
+    {
+        // Precisamos enviar um comando ao servidor
+        ChangeSkinServerRpc(slotIndex, newSkinID);
+    }
+
+    // 8. ServerRpc: Clientes pedem ao Host para mudar a skin
+    [ServerRpc(RequireOwnership = false)] // RequireOwnership = false permite que Clientes chamem
+    private void ChangeSkinServerRpc(int slotIndex, int newSkinID, ServerRpcParams rpcParams = default)
+    {
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+        LobbySlotData currentData = networkSlots[slotIndex];
+
+        // Validação: O Host controla bots, ou o Cliente controla seu próprio slot
+        if ((IsHost && currentData.State == SlotState.Bot) || currentData.ClientId == senderClientId)
+        {
+            currentData.SkinID = newSkinID;
+            networkSlots[slotIndex] = currentData; // Atualiza a lista, sincronizando para todos
         }
     }
 
-    /// <summary>
-    /// Verifica se o jogador local pode controlar o carrossel de skin de um slot.
-    /// </summary>
-    private bool ShouldLocalPlayerControlSlot(int slotIndex) // <-- LÓGICA ATUALIZADA
+    // 9. Host controla cliques de Bot (como antes, mas agora na NetworkList)
+    public void HandleSlotClick(int slotIndex)
     {
-        // Se a rede não estiver ativa (Single Player implícito), só controlamos o slot 0
-        if (NetworkManager.Singleton == null)
+        if (!IsHost || slotIndex == 0) return;
+
+        LobbySlotData currentData = networkSlots[slotIndex];
+        if (currentData.State == SlotState.Human) return; // Não mexe em slots de humanos
+
+        if (currentData.State == SlotState.Empty)
+        {
+            currentData.State = SlotState.Bot;
+            currentData.PlayerName = "Bot";
+        }
+        else if (currentData.State == SlotState.Bot)
+        {
+            currentData.State = SlotState.Empty;
+            currentData.PlayerName = "";
+        }
+        
+        currentData.SkinID = 0; // Reseta a skin
+        networkSlots[slotIndex] = currentData; // Atualiza a lista
+    }
+
+    // Lógica de controle de carrossel (lê da NetworkList)
+    private bool ShouldLocalPlayerControlSlot(int slotIndex)
+    {
+        if (!NetworkManager.Singleton.IsListening) // Offline
         {
             return slotIndex == 0;
         }
 
-        // Se a rede está ativa:
-        if (NetworkManager.Singleton.IsHost)
+        if (networkSlots.Count <= slotIndex) return false; // Lista ainda não populada
+        
+        LobbySlotData data = networkSlots[slotIndex];
+        
+        if (IsHost)
         {
-            // O Host controla seu próprio slot (0) OU qualquer slot que seja um Bot
-            return slotIndex == 0 || slotStates[slotIndex] == SlotState.Bot;
+            // Host controla seu slot (0) ou slots de Bot
+            return slotIndex == 0 || data.State == SlotState.Bot;
         }
-        else // Sou um Cliente
+        else // Sou Cliente
         {
-            // O Cliente SÓ controla seu próprio slot
-            // (Precisamos saber qual é o slot do cliente - lógica futura do Netcode)
-            // Por enquanto, vamos assumir que ele NUNCA controla outros slots além do seu
-            // (que ainda não sabemos qual é, então retornamos false por segurança para > 0)
-            ulong localClientId = NetworkManager.Singleton.LocalClientId;
-            // TODO: Mapear ClientId para SlotIndex
-            int mySlotIndex = -1; // Placeholder - O Netcode dirá isso
-            return slotIndex == mySlotIndex;
-        }
-    }
-
-    /// <summary>
-    /// Retorna o ID da skin selecionada para um slot específico.
-    /// Chamado antes de iniciar o jogo.
-    /// </summary>
-    public int GetSkinIDForSlot(int slotIndex)
-    {
-        if (slotIndex >= 0 && slotIndex < slotUIs.Count && slotUIs[slotIndex] != null)
-        {
-            return slotUIs[slotIndex].GetSelectedSkinID();
-        }
-        return 0; // Retorna 0 (padrão) se o slot for inválido
-    }
-
-    /// <summary>
-    /// (NOVO) Chamado pelo NetworkConnect QUANDO o Host é iniciado com sucesso.
-    /// Configura o estado inicial e atualiza a UI.
-    /// </summary>
-    public void SetupLobbyForHost()
-    {
-        // Limpa tudo (garantia)
-        for (int i = 0; i < 4; i++)
-        {
-            slotStates[i] = SlotState.Empty;
-            playerNames[i] = "";
-        }
-
-        // Define o Slot 0 como Humano (Host)
-        slotStates[0] = SlotState.Human;
-        playerNames[0] = "JogadorHost"; // Placeholder - No futuro, pegue um nome real
-                                        // Ou use NetworkManager.Singleton.LocalClientId?
-
-        // Atualiza a UI para refletir este estado inicial
-        UpdateAllSlotDisplays();
-    }
-
-
-    // --- FUNÇÕES DE SIMULAÇÃO (Para Teste - Chame via botões de debug se quiser) ---
-    public void SimulatePlayerJoin(int slotIndex, string name)
-    {
-        if (slotIndex > 0 && slotIndex < 4 && slotStates[slotIndex] == SlotState.Empty)
-        {
-            slotStates[slotIndex] = SlotState.Human;
-            playerNames[slotIndex] = name;
-            UpdateAllSlotDisplays();
-        }
-    }
-    public void SimulatePlayerLeave(int slotIndex)
-    {
-        if (slotIndex > 0 && slotIndex < 4)
-        {
-            slotStates[slotIndex] = SlotState.Empty;
-            playerNames[slotIndex] = "";
-            UpdateAllSlotDisplays();
+            // Cliente só controla o slot que tem o seu ClientId
+            return data.ClientId == NetworkManager.Singleton.LocalClientId;
         }
     }
     
-    /// <summary>
-    /// Chamado pelo MapSelectorUI ANTES de carregar a cena do jogo.
-    /// Salva o estado atual dos slots e skins na classe estática LobbyData.
-    /// </summary>
+    // 10. (HOST) Gerencia conexões
+    private void HandleClientConnected(ulong clientId)
+    {
+        if (clientId == NetworkManager.Singleton.LocalClientId)
+        {
+            return;
+        }
+        // Encontra o primeiro slot vazio
+        for (int i = 1; i < 4; i++) // Começa em 1 (0 é o Host)
+        {
+            if (networkSlots[i].State == SlotState.Empty)
+            {
+                networkSlots[i] = new LobbySlotData
+                {
+                    State = SlotState.Human,
+                    PlayerName = $"Jogador {clientId}", // TODO: Pegar nome real
+                    SkinID = 0,
+                    ClientId = clientId
+                };
+                return; // Achou um slot
+            }
+        }
+        // TODO: Tratar lobby cheio (chutar o cliente?)
+    }
+
+    private void HandleClientDisconnect(ulong clientId)
+    {
+         // Encontra o slot do cliente que saiu
+        for (int i = 1; i < 4; i++)
+        {
+            if (networkSlots[i].ClientId == clientId)
+            {
+                // Reseta o slot
+                networkSlots[i] = new LobbySlotData { State = SlotState.Empty };
+                return;
+            }
+        }
+    }
+
+    // 11. Salva os dados para a próxima cena (lendo da NetworkList)
     public void CacheLobbyDataForSceneLoad()
     {
-        // Garante que temos 4 slots configurados
-        if (slotUIs == null || slotUIs.Count != 4)
+        if (networkSlots.Count != 4)
         {
-            Debug.LogError("Tentando salvar dados do Lobby, mas os slots não estão configurados!");
+            Debug.LogError("Tentando salvar dados, mas a NetworkList não tem 4 slots!");
             return;
         }
 
-        // Cria arrays temporários (ou usa os que você já tem se `slotStates` for membro da classe)
         SlotState[] currentStates = new SlotState[4];
         int[] currentSkinIDs = new int[4];
 
         for (int i = 0; i < 4; i++)
         {
-            if (slotUIs[i] != null)
-            {
-                // Pega o estado e a skin ID de cada SlotUI
-                currentStates[i] = slotUIs[i].CurrentState; // Assume que SlotUI guarda seu estado
-                currentSkinIDs[i] = slotUIs[i].GetSelectedSkinID();
-            }
-            else
-            {
-                // Slot inválido, marca como vazio
-                currentStates[i] = SlotState.Empty;
-                currentSkinIDs[i] = 0; // Skin padrão
-            }
+            currentStates[i] = networkSlots[i].State;
+            currentSkinIDs[i] = networkSlots[i].SkinID;
         }
+        
+        // --- ADICIONE ESTA LÓGICA ---
+        ulong[] currentClientIds = new ulong[4];
+        for (int i = 0; i < 4; i++)
+        {
+            // (Assumindo que já populou currentStates e currentSkinIDs)
+            currentClientIds[i] = networkSlots[i].ClientId;
+        }
+        // --- FIM DA ADIÇÃO ---
 
-        // Salva nos campos estáticos para a próxima cena ler
         LobbyData.SlotStates = currentStates;
         LobbyData.SkinIDs = currentSkinIDs;
+
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.LastLobbySlotStates = currentStates;
+            GameManager.Instance.LastLobbySkinIDs = currentSkinIDs;
+            GameManager.Instance.LastLobbyClientIds = currentClientIds;
+        }
     }
+    
+    // Removemos SetupLobbyForHost - a lógica agora está em OnNetworkSpawn
+    // Removemos IsLocalPlayerHost - use a propriedade "IsHost" do NetworkBehaviour
+    // Removemos GetSkinIDForSlot - a lógica agora está em CacheLobbyData...
 }

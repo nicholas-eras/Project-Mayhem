@@ -5,48 +5,88 @@ using UnityEngine.SceneManagement;
 public class NetworkConnect : MonoBehaviour
 {
     [Header("Painéis de UI")]
-    [SerializeField] private GameObject multiplayerPanel;
-    [SerializeField] private GameObject lobbyPanel;
-    [SerializeField] private GameObject mapSelectionPanel; // <-- NOVO
+    [SerializeField] private GameObject multiplayerPanel; // O menu "Hospedar/Entrar"
+    [SerializeField] private GameObject lobbyPanel; // O lobby com os 4 slots
+    [SerializeField] private GameObject mapSelectionPanel; 
+    
+    // --- NOVO: Adicione este painel ---
+    [Tooltip("Painel 'Aguardando Host...' para clientes que voltam ao lobby")]
+    [SerializeField] private GameObject waitingPanel; 
 
-
-    // --- NOVA REFERÊNCIA ---
     [Header("Managers")]
-    [SerializeField] private LobbyManager lobbyManager; // <-- Arraste o LobbyPanel aqui
-    // --- FIM ---
+    [SerializeField] private LobbyManager lobbyManager; 
 
-    void Awake() // <-- Adicione Awake para pegar o LobbyManager se não arrastou
+    void Awake() 
     {
         if (lobbyManager == null)
         {
-            lobbyManager = FindObjectOfType<LobbyManager>(); // Assume que só há um
+            // Tenta encontrar o LobbyManager_Networked
+            lobbyManager = FindObjectOfType<LobbyManager>(); 
         }
     }
+    
+    // --- ESTA É A FUNÇÃO QUE FALTA ---
+    void Start()
+    {
+        // Verifica se já estamos conectados quando esta cena (Menu/Lobby) carrega
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+        {
+            if (NetworkManager.Singleton.IsHost)
+            {
+                // Estamos a voltar ao Lobby como Host
+                Debug.Log("NetworkConnect: Voltando ao Lobby como Host.");
+                multiplayerPanel.SetActive(false);
+                mapSelectionPanel.SetActive(false); 
+                if (waitingPanel != null) waitingPanel.SetActive(false);
+                
+                lobbyPanel.SetActive(true); // Mostra o Lobby diretamente
+            }
+            else if (NetworkManager.Singleton.IsClient)
+            {
+                // Estamos a voltar ao Lobby como Cliente
+                Debug.Log("NetworkConnect: Voltando ao Lobby como Cliente.");
+                multiplayerPanel.SetActive(false);
+                lobbyPanel.SetActive(false);
+                mapSelectionPanel.SetActive(false);
+                
+                // Mostra um painel "Aguardando Host..."
+                if (waitingPanel != null)
+                {
+                    waitingPanel.SetActive(true); 
+                }
+            }
+        }
+        else
+        {
+            // Estado padrão (offline) - Mostra o menu inicial
+            multiplayerPanel.SetActive(true);
+            lobbyPanel.SetActive(false);
+            mapSelectionPanel.SetActive(false);
+            if (waitingPanel != null) waitingPanel.SetActive(false);
+        }
+    }
+    // --- FIM DA FUNÇÃO START ---
+    
     
     /// <summary>
     /// Chamado pelo botão "Hospedar"
     /// </summary>
     public void OnClickHost()
     {
+        // Esta função agora só será chamada se estivermos offline
         if (NetworkManager.Singleton.StartHost())
         {
             multiplayerPanel.SetActive(false);
-            lobbyPanel.SetActive(true); // Mostra o Lobby (com os slots)
-            // --- AQUI ESTÁ A MUDANÇA ---
-            // Diz ao LobbyManager para configurar o estado inicial AGORA
-            if (lobbyManager != null)
-            {
-                lobbyManager.SetupLobbyForHost();
-            }
-            else
-            {
-                 Debug.LogError("LobbyManager não encontrado! A UI do Lobby não será configurada.");
-            }
-            // --- FIM DA MUDANÇA ---
+            lobbyPanel.SetActive(true); 
+            // Não precisamos mais do SetupLobbyForHost() aqui,
+            // o OnNetworkSpawn do LobbyManager trata disso.
         }
         else
         {
             Debug.LogError("Falha ao iniciar Host!");
+            NetworkManager.Singleton.Shutdown(); 
+            multiplayerPanel.SetActive(true);
+            lobbyPanel.SetActive(false);
         }
     }
 
@@ -57,10 +97,11 @@ public class NetworkConnect : MonoBehaviour
     {
         if (NetworkManager.Singleton.StartClient())
         {
-            Debug.Log("Cliente conectado!");
-            // O cliente não faz nada, ele espera o Host mudar a cena.
-            // Poderíamos mostrar um painel "Conectando..."
             multiplayerPanel.SetActive(false); 
+            if (waitingPanel != null)
+            {
+                waitingPanel.SetActive(true);
+            }
         }
         else
         {
@@ -73,13 +114,9 @@ public class NetworkConnect : MonoBehaviour
     /// </summary>
     public void OnClickStartFromLobby()
     {
-        // Só o Host pode fazer isso
         if (!NetworkManager.Singleton.IsHost) return;
         
-        // Esconde o lobby e mostra a seleção de mapa PARA O HOST
         lobbyPanel.SetActive(false);
         mapSelectionPanel.SetActive(true);
     }
-    
-    // (O MapSelectorUI.cs, que é clicado no final, precisa ser modificado)
 }

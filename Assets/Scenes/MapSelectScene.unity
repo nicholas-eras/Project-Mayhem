@@ -578,9 +578,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1315640298}
-        m_TargetAssemblyTypeName: NetworkConnect, Assembly-CSharp
-        m_MethodName: OnClickStartFromLobby
+      - m_Target: {fileID: 1334033898}
+        m_TargetAssemblyTypeName: MapSelectionManager, Assembly-CSharp
+        m_MethodName: OnStartFromLobbyButtonSelected
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -810,8 +810,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1315640298}
-        m_TargetAssemblyTypeName: NetworkConnect, Assembly-CSharp
+      - m_Target: {fileID: 1334033898}
+        m_TargetAssemblyTypeName: MapSelectionManager, Assembly-CSharp
         m_MethodName: OnClickJoin
         m_Mode: 1
         m_Arguments:
@@ -933,7 +933,7 @@ MonoBehaviour:
     m_Top: 0
     m_Bottom: 0
   m_ChildAlignment: 4
-  m_Spacing: 0
+  m_Spacing: 4
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 0
@@ -1024,8 +1024,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1315640298}
-        m_TargetAssemblyTypeName: NetworkConnect, Assembly-CSharp
+      - m_Target: {fileID: 1334033898}
+        m_TargetAssemblyTypeName: MapSelectionManager, Assembly-CSharp
         m_MethodName: OnClickHost
         m_Mode: 1
         m_Arguments:
@@ -2139,7 +2139,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1332704552}
   m_HandleRect: {fileID: 1332704551}
   m_Direction: 0
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -3150,7 +3150,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1315640297}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 69379bead5008b04ea6604c76391b997, type: 3}
   m_Name: 
@@ -3158,7 +3158,8 @@ MonoBehaviour:
   multiplayerPanel: {fileID: 1671857467}
   lobbyPanel: {fileID: 1332638056}
   mapSelectionPanel: {fileID: 662146908}
-  lobbyManager: {fileID: 1332638060}
+  waitingPanel: {fileID: 0}
+  lobbyManager: {fileID: 0}
 --- !u!114 &1315640299
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3260,7 +3261,6 @@ GameObject:
   - component: {fileID: 1332638059}
   - component: {fileID: 1332638058}
   - component: {fileID: 1332638057}
-  - component: {fileID: 1332638060}
   - component: {fileID: 1332638061}
   m_Layer: 5
   m_Name: LobbyPanel
@@ -3328,24 +3328,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1332638060
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1332638056}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 34a152ad70cdb734eacb33b0f3f496fa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  skinDatabase: {fileID: 11400000, guid: b478f85c1d54216449d2623e360233af, type: 2}
-  slotUIs:
-  - {fileID: 1842568182}
-  - {fileID: 282772616}
-  - {fileID: 2113711306}
-  - {fileID: 1371126060}
 --- !u!114 &1332638061
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3483,6 +3465,8 @@ MonoBehaviour:
   mapSelectionPanel: {fileID: 662146908}
   multiplayerPanel: {fileID: 1671857467}
   lobbyPanel: {fileID: 1332638056}
+  waitingPanel: {fileID: 0}
+  lobbyManager: {fileID: 2124645192}
 --- !u!4 &1334033899
 Transform:
   m_ObjectHideFlags: 0
@@ -4940,6 +4924,76 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f54f966463890148b167e3518e452bb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &2124645190
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2124645193}
+  - component: {fileID: 2124645191}
+  - component: {fileID: 2124645192}
+  m_Layer: 0
+  m_Name: LobbyManager_Networked
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2124645191
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2124645190}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 456849270
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+--- !u!114 &2124645192
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2124645190}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34a152ad70cdb734eacb33b0f3f496fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skinDatabase: {fileID: 11400000, guid: b478f85c1d54216449d2623e360233af, type: 2}
+  slotUIs:
+  - {fileID: 1842568182}
+  - {fileID: 282772616}
+  - {fileID: 2113711306}
+  - {fileID: 1371126060}
+--- !u!4 &2124645193
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2124645190}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 400.022, y: 168.53802, z: -0.17272252}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 8
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &3201260857822837166
 PrefabInstance:
   m_ObjectHideFlags: 0

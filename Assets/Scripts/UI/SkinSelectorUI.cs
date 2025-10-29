@@ -2,10 +2,15 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
+using System; // <-- Adicionado para 'Action'
 
 public class SkinSelectorUI : MonoBehaviour
 {
-    // Removido SerializeField para SkinDatabase, será passado pelo SlotUI
+    // --- NOVO EVENTO ---
+    // Avisa o SlotUI quando o jogador local (que controla este slot) muda a skin
+    public event Action<int> OnSkinChanged; 
+    // --- FIM ---
+
     private SkinDatabase skinDatabase;
 
     [Header("Referências da UI")]
@@ -14,21 +19,13 @@ public class SkinSelectorUI : MonoBehaviour
     [SerializeField] private Button previousButton;
     [SerializeField] private Button nextButton;
 
-    // --- NOVAS VARIÁVEIS ---
-    public int SlotIndex { get; private set; } = -1; // Índice do slot (0-3)
+    public int SlotIndex { get; private set; } = -1;
     private List<SkinData> availableSkins;
     private int currentSkinIndex = 0;
-    // --- FIM NOVAS VARIÁVEIS ---
 
-    // Chave base para o PlayerPrefs
-    private const string SKIN_PREF_KEY_BASE = "SlotSkinID_"; // Ex: SlotSkinID_0, SlotSkinID_1
+    // --- PlayerPrefs REMOVIDO ---
+    // A NetworkList do LobbyManager é agora a fonte da verdade.
 
-    // Não usa mais Start(), a inicialização vem de fora
-    // void Start() { ... }
-
-    /// <summary>
-    /// Chamado pelo SlotUI para configurar este seletor.
-    /// </summary>
     public void Initialize(int index, SkinDatabase db)
     {
         SlotIndex = index;
@@ -43,14 +40,10 @@ public class SkinSelectorUI : MonoBehaviour
 
         availableSkins = skinDatabase.skins;
 
-        // Carrega a skin salva para ESTE slot
-        currentSkinIndex = PlayerPrefs.GetInt(GetPlayerPrefsKey(), 0);
-        if (currentSkinIndex < 0 || currentSkinIndex >= availableSkins.Count)
-        {
-            currentSkinIndex = 0;
-        }
+        // --- LÓGICA DO PlayerPrefs REMOVIDA ---
+        currentSkinIndex = 0; // Sempre começa no 0. A rede corrigirá se necessário.
 
-        previousButton.onClick.RemoveAllListeners(); // Limpa listeners
+        previousButton.onClick.RemoveAllListeners();
         nextButton.onClick.RemoveAllListeners();
         previousButton.onClick.AddListener(ShowPreviousSkin);
         nextButton.onClick.AddListener(ShowNextSkin);
@@ -58,29 +51,55 @@ public class SkinSelectorUI : MonoBehaviour
         UpdateDisplay();
     }
 
-    /// <summary>
-    /// Ativa ou desativa a interatividade dos botões.
-    /// </summary>
     public void SetInteractable(bool interactable)
     {
         previousButton.interactable = interactable;
         nextButton.interactable = interactable;
     }
 
+    // --- NOVO MÉTODO ---
+    /// <summary>
+    /// Chamado externamente (pelo SlotUI) para FORÇAR a exibição de uma skin.
+    /// Isso é usado para sincronizar a UI com o estado da rede.
+    /// NÃO dispara o evento OnSkinChanged (para evitar loops).
+    /// </summary>
+    public void SetSkin(int skinID)
+    {
+        if (availableSkins == null || availableSkins.Count == 0) return;
+
+        // Valida o skinID
+        if (skinID < 0 || skinID >= availableSkins.Count)
+        {
+            skinID = 0;
+        }
+
+        currentSkinIndex = skinID;
+        UpdateDisplay();
+    }
+    // --- FIM NOVO MÉTODO ---
+
     public void ShowPreviousSkin()
     {
         if (availableSkins == null || availableSkins.Count == 0) return;
-        currentSkinIndex = (currentSkinIndex - 1 + availableSkins.Count) % availableSkins.Count; // Wrap around
+        currentSkinIndex = (currentSkinIndex - 1 + availableSkins.Count) % availableSkins.Count;
+        
         UpdateDisplay();
-        SaveSelection();
+        
+        // --- ALTERADO ---
+        // Em vez de salvar no PlayerPrefs, disparamos o evento
+        OnSkinChanged?.Invoke(currentSkinIndex);
     }
 
     public void ShowNextSkin()
     {
         if (availableSkins == null || availableSkins.Count == 0) return;
-        currentSkinIndex = (currentSkinIndex + 1) % availableSkins.Count; // Wrap around
+        currentSkinIndex = (currentSkinIndex + 1) % availableSkins.Count;
+        
         UpdateDisplay();
-        SaveSelection();
+        
+        // --- ALTERADO ---
+        // Em vez de salvar no PlayerPrefs, disparamos o evento
+        OnSkinChanged?.Invoke(currentSkinIndex);
     }
 
     private void UpdateDisplay()
@@ -100,30 +119,6 @@ public class SkinSelectorUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Gera a chave única do PlayerPrefs para este slot.
-    /// </summary>
-    private string GetPlayerPrefsKey()
-    {
-        return SKIN_PREF_KEY_BASE + SlotIndex;
-    }
-
-    private void SaveSelection()
-    {
-        if (SlotIndex == -1) return; // Não salva se não foi inicializado
-
-        PlayerPrefs.SetInt(GetPlayerPrefsKey(), currentSkinIndex);
-        // PlayerPrefs.Save(); // Opcional: Forçar salvamento (pode causar pequeno lag)
-
-        // --- IMPORTANTE PARA REDE (FUTURO) ---
-        // Se este slot for controlado pelo jogador local,
-        // ele precisará notificar o servidor sobre a mudança.
-        // Ex: FindObjectOfType<LobbyManager>().NotifySkinChange(SlotIndex, currentSkinIndex);
-    }
-
-    /// <summary>
-    /// Retorna o ID da skin atualmente selecionada neste carrossel.
-    /// </summary>
     public int GetCurrentSkinID()
     {
         return currentSkinIndex;

@@ -24,17 +24,19 @@ public class FireEffect : MonoBehaviour
     }
 
     public void ApplyFire(float tickDamage, float duration, float tickInterval = 1f)
-    {
-        if (targetHealthSystem == null) return;
-        
-        // Se já estiver pegando fogo, NÃO reinicia (mantém o fogo original)
-        if (fireRoutine != null)
-        {
-            return;
-        }
+{
+    if (targetHealthSystem == null) return;
+    if (fireRoutine != null) return;
 
-        IsOnFire = true;
-        StartVisuals();
+    // Proteção extra — garante que o script e o objeto estejam ativos
+    if (!isActiveAndEnabled || gameObject == null || !gameObject.activeInHierarchy)
+        return;
+
+    IsOnFire = true;
+    StartVisuals();
+
+    // Proteção final: evita crash se o objeto for desativado no mesmo frame
+    if (isActiveAndEnabled && gameObject.activeInHierarchy)
         fireRoutine = StartCoroutine(FireDamageRoutine(tickDamage, duration, tickInterval));
     }
 
@@ -48,9 +50,9 @@ public class FireEffect : MonoBehaviour
             // Aplica o dano como Fire (passa por i-frames mas não os ativa)
             DamageInfo damageInfo = new DamageInfo(tickDamage, DamageType.Fire);
             targetHealthSystem.TakeDamage(damageInfo, null); // null = não ativa cooldown
-            
+
             tickCount++;
-            
+
             yield return new WaitForSeconds(tickInterval);
             elapsedTime += tickInterval;
         }

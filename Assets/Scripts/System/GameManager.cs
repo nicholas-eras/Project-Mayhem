@@ -23,7 +23,10 @@ public class GameManager : MonoBehaviour
     [SerializeField] private GameObject retryButton;
 
     private bool isGameOver = false; // Flag interna para evitar múltiplas chamadas
-
+    public SlotState[] LastLobbySlotStates { get; set; } = null;
+    public int[] LastLobbySkinIDs { get; set; } = null;
+    public ulong[] LastLobbyClientIds { get; set; } = null;
+    
     void Awake()
     {
         // Configuração padrão do Singleton DontDestroyOnLoad
@@ -66,7 +69,6 @@ public class GameManager : MonoBehaviour
         else
         {
             // Fallback: Se não há painel de UI, apenas volta ao menu após um delay
-            Debug.LogWarning("Painel de Game Over (gameOverPanel) não configurado no GameManager. Voltando ao menu...");
             StartCoroutine(LoadMapSelectAfterDelay(3.0f));
         }
     }
@@ -94,8 +96,75 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void OnButtonQuitToMenu()
     {
-        CleanupAndLoadScene(mapSelectSceneName);
+        // Se estamos em rede e somos um Cliente, apenas nos desconectamos
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.IsHost)
+        {
+            Debug.Log("[GameManager] Cliente clicou em Sair. Desconectando.");
+            // O Cliente se desconecta e carrega o menu localmente
+            // A lógica em CleanupAndLoadScene(mapSelectSceneName) já cuida disso.
+            CleanupAndLoadScene(mapSelectSceneName);
+        }
+        else
+        {
+            // Se somos o Host (ou estamos offline),
+            // carregamos a cena (o Host levará todos junto)
+            CleanupAndLoadScene(mapSelectSceneName);
+        }
     }
+
+    // Em GameManager.cs
+
+    /// <summary>
+    /// Função centralizada para lidar com o carregamento de cenas,
+    /// considerando se estamos offline, Host ou Cliente.
+    /// </summary>
+    private void CleanupAndLoadScene(string sceneName)
+    {
+        // Restaura o estado do jogo antes de mudar de cena
+        Time.timeScale = 1.0f;
+        isGameOver = false;
+        if (gameOverPanel != null) gameOverPanel.SetActive(false); // Garante que a UI suma
+
+        // Verifica o estado da rede
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+        {
+            // Estamos numa sessão de rede ativa
+            if (NetworkManager.Singleton.IsHost)
+            {
+                // --- ESTA É A LÓGICA CORRETA PARA O HOST ---
+                // O Host NUNCA se desliga.
+                // Ele apenas usa o SceneManager da rede para forçar
+                // TODOS (ele mesmo e os clientes) a carregar a nova cena.
+                Debug.Log($"[GameManager] Host a carregar a cena '{sceneName}' para todos.");
+                NetworkManager.Singleton.SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
+            }
+            else if (NetworkManager.Singleton.IsClient)
+            {
+                // CLIENTE:
+                // Se o cliente está a voltar ao menu (provavelmente clicou em "Sair"),
+                // ele DEVE desligar-se.
+                if (sceneName == mapSelectSceneName)
+                {
+                    Debug.Log("[GameManager] Cliente a voltar ao menu. A desligar (Shutdown).");
+                    NetworkManager.Singleton.Shutdown(); // Cliente desconecta-se
+                    StartCoroutine(LoadSceneLocalAfterShutdown(sceneName));
+                }
+                else
+                {
+                    // Cliente nunca deve tentar carregar outra cena
+                    Debug.LogWarning($"[GameManager - Cliente] Tentativa de carregar cena '{sceneName}' ignorada.");
+                }
+            }
+        }
+        else // Modo Offline (Single Player)
+        {
+            // Usa o SceneManager normal do Unity
+            if (CanLoadScene(sceneName))
+            {
+                SceneManager.LoadScene(sceneName);
+            }
+        }
+    }    
 
     /// <summary>
     /// Chamado pelo botão "Reiniciar Fase". Recarrega a cena atual do zero.
@@ -106,8 +175,8 @@ public class GameManager : MonoBehaviour
         // Em rede, apenas o Host pode reiniciar a cena para todos
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.IsHost)
         {
-             Debug.LogWarning("Cliente tentou reiniciar a cena. Apenas o Host pode fazer isso.");
-             return; // Clientes não fazem nada
+            Debug.LogWarning("Cliente tentou reiniciar a cena. Apenas o Host pode fazer isso.");
+            return; // Clientes não fazem nada
         }
         CleanupAndLoadScene(SceneManager.GetActiveScene().name);
     }
@@ -175,53 +244,6 @@ public class GameManager : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(delay); // Espera mesmo com Time.timeScale = 0
         CleanupAndLoadScene(mapSelectSceneName);
-    }
-
-    /// <summary>
-    /// Função centralizada para lidar com o carregamento de cenas,
-    /// considerando se estamos offline, Host ou Cliente.
-    /// </summary>
-    private void CleanupAndLoadScene(string sceneName)
-    {
-        // Restaura o estado do jogo antes de mudar de cena
-        Time.timeScale = 1.0f;
-        isGameOver = false;
-        if (gameOverPanel != null) gameOverPanel.SetActive(false); // Garante que a UI suma
-
-        // Verifica o estado da rede
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
-        {
-            // Estamos em uma sessão de rede ativa
-            if (NetworkManager.Singleton.IsHost)
-            {
-                // Host usa o SceneManager da rede para carregar a cena para todos
-                NetworkManager.Singleton.SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
-            }
-            else if (NetworkManager.Singleton.IsClient)
-            {
-                // Cliente voltando para o menu principal?
-                 if (sceneName == mapSelectSceneName)
-                 {
-                      NetworkManager.Singleton.Shutdown(); // Cliente se desconecta
-                      // Carrega a cena do menu localmente APÓS desconectar
-                      // (Necessário porque o Shutdown pode levar um frame)
-                      StartCoroutine(LoadSceneLocalAfterShutdown(sceneName));
-                 }
-                 else
-                 {
-                      // Cliente NUNCA deve tentar carregar uma cena de jogo diretamente
-                      Debug.LogWarning($"[GameManager - Cliente] Tentativa de carregar cena '{sceneName}' ignorada. Apenas o Host pode mudar a cena do jogo.");
-                 }
-            }
-        }
-        else // Modo Offline (Single Player)
-        {
-            // Usa o SceneManager normal do Unity
-            if (CanLoadScene(sceneName))
-            {
-                SceneManager.LoadScene(sceneName);
-            }
-        }
     }
 
     /// <summary>

@@ -1687,7 +1687,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7f62fa5bcc7cf3438a7342c62c85b01, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  waveManager: {fileID: 1987370468}
+  waveManager: {fileID: 1594375194}
   upgradeManager: {fileID: 1216542617}
   uiManager: {fileID: 948006602}
 --- !u!4 &1481313742
@@ -1713,7 +1713,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1491964738}
-  - component: {fileID: 1491964737}
   - component: {fileID: 1491964736}
   - component: {fileID: 1491964735}
   m_Layer: 0
@@ -1752,19 +1751,6 @@ MonoBehaviour:
   mainCameraFollow: {fileID: 519420030}
   joystickP1: {fileID: 1849397679547403590}
   healthBarP1: {fileID: 1849397679547403589}
---- !u!114 &1491964737
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1491964734}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a892655694d9f074e833244e576a3b62, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerAgentPrefab: {fileID: 3215147586821829842, guid: e632f2e6b747ed543a437b04c13b74a8, type: 3}
 --- !u!4 &1491964738
 Transform:
   m_ObjectHideFlags: 0
@@ -1808,6 +1794,313 @@ Transform:
   m_Children: []
   m_Father: {fileID: 553450807}
   m_RootOrder: 3
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1594375192
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1594375195}
+  - component: {fileID: 1594375194}
+  - component: {fileID: 1594375193}
+  m_Layer: 0
+  m_Name: WaveManagerHost
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1594375193
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1594375192}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a892655694d9f074e833244e576a3b62, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerAgentPrefab: {fileID: 3215147586821829842, guid: e632f2e6b747ed543a437b04c13b74a8, type: 3}
+--- !u!114 &1594375194
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1594375192}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38f9222c4824e5e4c89d04c1f057f95e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  waves:
+  - waveName: 1
+    enemyGroups:
+    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
+      count: 40
+      spawnInterval: 0.5
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
+      count: 10
+      spawnInterval: 0.5
+      initialDelay: 3
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    useBossPlayerSpawn: 0
+    bossFixedSpawnPosition: {x: 0.25, y: 0, z: 0}
+  - waveName: 2
+    enemyGroups:
+    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
+      count: 30
+      spawnInterval: 0.5
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
+      count: 5
+      spawnInterval: 3
+      initialDelay: 5
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 5823305095513310861, guid: e7cfb7fc42bf3c24d9568b86f646eea1, type: 3}
+      count: 5
+      spawnInterval: 2
+      initialDelay: 5
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    useBossPlayerSpawn: 0
+    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
+  - waveName: 3
+    enemyGroups:
+    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
+      count: 20
+      spawnInterval: 0.5
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
+      count: 3
+      spawnInterval: 2
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 5823305095513310861, guid: e7cfb7fc42bf3c24d9568b86f646eea1, type: 3}
+      count: 5
+      spawnInterval: 1
+      initialDelay: 7
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 419219122743540495, guid: 3b38170970cc71642b32d7490b862680, type: 3}
+      count: 1
+      spawnInterval: 0
+      initialDelay: 5
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    useBossPlayerSpawn: 0
+    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
+  - waveName: 4
+    enemyGroups:
+    - enemyPrefab: {fileID: 2206360170153121592, guid: 5efb1327e6eced04a87b6d99bffd2445, type: 3}
+      count: 1
+      spawnInterval: 1
+      initialDelay: 0
+      isBossGroup: 1
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 5823305095513310861, guid: e7cfb7fc42bf3c24d9568b86f646eea1, type: 3}
+      count: 20
+      spawnInterval: 1
+      initialDelay: 5
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
+      count: 20
+      spawnInterval: 0.5
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    useBossPlayerSpawn: 0
+    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
+  - waveName: 5
+    enemyGroups:
+    - enemyPrefab: {fileID: 5823305095513310861, guid: e7cfb7fc42bf3c24d9568b86f646eea1, type: 3}
+      count: 40
+      spawnInterval: 0.5
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 419219122743540495, guid: 3b38170970cc71642b32d7490b862680, type: 3}
+      count: 4
+      spawnInterval: 7
+      initialDelay: 4
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    useBossPlayerSpawn: 0
+    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
+  - waveName: 6
+    enemyGroups:
+    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
+      count: 50
+      spawnInterval: 0.1
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
+      count: 20
+      spawnInterval: 0.5
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    useBossPlayerSpawn: 0
+    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
+  - waveName: 7
+    enemyGroups:
+    - enemyPrefab: {fileID: 2206360170153121592, guid: 87deb29c860985e41a01d8e430b13380, type: 3}
+      count: 2
+      spawnInterval: 10
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
+      count: 10
+      spawnInterval: 1
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
+      count: 10
+      spawnInterval: 0.5
+      initialDelay: 3
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    useBossPlayerSpawn: 0
+    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
+  - waveName: 8
+    enemyGroups:
+    - enemyPrefab: {fileID: 2206360170153121592, guid: c93cf12a93df997418b3391806ccbdeb, type: 3}
+      count: 1
+      spawnInterval: 2
+      initialDelay: 2
+      isBossGroup: 1
+      scaleHealthInsteadOfQuantity: 1
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 5268392615084530034, guid: 069c13d2b2242bc44b9da75cd8a49e61, type: 3}
+      count: 1
+      spawnInterval: 0
+      initialDelay: 0
+      isBossGroup: 1
+      scaleHealthInsteadOfQuantity: 1
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 2206360170153121592, guid: 5efb1327e6eced04a87b6d99bffd2445, type: 3}
+      count: 1
+      spawnInterval: 10
+      initialDelay: 10
+      isBossGroup: 1
+      scaleHealthInsteadOfQuantity: 1
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 2206360170153121592, guid: d822989c737f2434eb48845ecfdfda57, type: 3}
+      count: 1
+      spawnInterval: 6
+      initialDelay: 6
+      isBossGroup: 1
+      scaleHealthInsteadOfQuantity: 1
+      isGreaterBoss: 0
+    useBossPlayerSpawn: 0
+    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
+  - waveName: 9
+    enemyGroups:
+    - enemyPrefab: {fileID: 5823305095513310861, guid: e7cfb7fc42bf3c24d9568b86f646eea1, type: 3}
+      count: 20
+      spawnInterval: 0.5
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 2206360170153121592, guid: 87deb29c860985e41a01d8e430b13380, type: 3}
+      count: 2
+      spawnInterval: 10
+      initialDelay: 5
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 1
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 419219122743540495, guid: 3b38170970cc71642b32d7490b862680, type: 3}
+      count: 4
+      spawnInterval: 4
+      initialDelay: 2
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 1
+      isGreaterBoss: 0
+    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
+      count: 20
+      spawnInterval: 0.5
+      initialDelay: 0
+      isBossGroup: 0
+      scaleHealthInsteadOfQuantity: 0
+      isGreaterBoss: 0
+    useBossPlayerSpawn: 0
+    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
+  - waveName: 
+    enemyGroups:
+    - enemyPrefab: {fileID: 2833666976211317869, guid: 5838f2a72e22cb046864bfbe36bda446, type: 3}
+      count: 1
+      spawnInterval: 0
+      initialDelay: 0
+      isBossGroup: 1
+      scaleHealthInsteadOfQuantity: 1
+      isGreaterBoss: 1
+    useBossPlayerSpawn: 1
+    bossFixedSpawnPosition: {x: 2, y: 2, z: 0}
+  startOnWave: 0
+  spawnPoints:
+  - {fileID: 479886630}
+  - {fileID: 317762672}
+  - {fileID: 289545206}
+  - {fileID: 1506221420}
+  - {fileID: 1376730125}
+  - {fileID: 119009539}
+  - {fileID: 466232849}
+  - {fileID: 1916779035}
+  coinCollectionTime: 1.5
+  extraEnemiesPerPlayer: 1
+  healthMultiplierPerPlayer: 0.1
+--- !u!4 &1594375195
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1594375192}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.7274672, y: 2.0716496, z: -1773.157}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 21
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1652109713
 PrefabInstance:
@@ -2065,7 +2358,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1987370467}
-  - component: {fileID: 1987370468}
   - component: {fileID: 1987370469}
   m_Layer: 0
   m_Name: GameManager
@@ -2088,268 +2380,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 13
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1987370468
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1987370466}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 38f9222c4824e5e4c89d04c1f057f95e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  waves:
-  - waveName: 1
-    enemyGroups:
-    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
-      count: 40
-      spawnInterval: 0.5
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
-      count: 10
-      spawnInterval: 0.5
-      initialDelay: 3
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    useBossPlayerSpawn: 0
-    bossFixedSpawnPosition: {x: 0.25, y: 0, z: 0}
-  - waveName: 2
-    enemyGroups:
-    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
-      count: 30
-      spawnInterval: 0.5
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
-      count: 5
-      spawnInterval: 3
-      initialDelay: 5
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 5823305095513310861, guid: e7cfb7fc42bf3c24d9568b86f646eea1, type: 3}
-      count: 5
-      spawnInterval: 2
-      initialDelay: 5
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    useBossPlayerSpawn: 0
-    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
-  - waveName: 3
-    enemyGroups:
-    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
-      count: 20
-      spawnInterval: 0.5
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
-      count: 3
-      spawnInterval: 2
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 5823305095513310861, guid: e7cfb7fc42bf3c24d9568b86f646eea1, type: 3}
-      count: 5
-      spawnInterval: 1
-      initialDelay: 7
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 419219122743540495, guid: 3b38170970cc71642b32d7490b862680, type: 3}
-      count: 1
-      spawnInterval: 0
-      initialDelay: 5
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    useBossPlayerSpawn: 0
-    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
-  - waveName: 4
-    enemyGroups:
-    - enemyPrefab: {fileID: 2206360170153121592, guid: 5efb1327e6eced04a87b6d99bffd2445, type: 3}
-      count: 1
-      spawnInterval: 1
-      initialDelay: 0
-      isBossGroup: 1
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 5823305095513310861, guid: e7cfb7fc42bf3c24d9568b86f646eea1, type: 3}
-      count: 20
-      spawnInterval: 1
-      initialDelay: 5
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
-      count: 20
-      spawnInterval: 0.5
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    useBossPlayerSpawn: 0
-    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
-  - waveName: 5
-    enemyGroups:
-    - enemyPrefab: {fileID: 5823305095513310861, guid: e7cfb7fc42bf3c24d9568b86f646eea1, type: 3}
-      count: 40
-      spawnInterval: 0.5
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 419219122743540495, guid: 3b38170970cc71642b32d7490b862680, type: 3}
-      count: 4
-      spawnInterval: 7
-      initialDelay: 4
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    useBossPlayerSpawn: 0
-    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
-  - waveName: 6
-    enemyGroups:
-    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
-      count: 50
-      spawnInterval: 0.1
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
-      count: 20
-      spawnInterval: 0.5
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    useBossPlayerSpawn: 0
-    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
-  - waveName: 7
-    enemyGroups:
-    - enemyPrefab: {fileID: 2206360170153121592, guid: 87deb29c860985e41a01d8e430b13380, type: 3}
-      count: 2
-      spawnInterval: 10
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
-      count: 10
-      spawnInterval: 1
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 964893710653454654, guid: 6cf8d75291a84b447a3d1d2089a678b8, type: 3}
-      count: 10
-      spawnInterval: 0.5
-      initialDelay: 3
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    useBossPlayerSpawn: 0
-    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
-  - waveName: 8
-    enemyGroups:
-    - enemyPrefab: {fileID: 2206360170153121592, guid: c93cf12a93df997418b3391806ccbdeb, type: 3}
-      count: 1
-      spawnInterval: 2
-      initialDelay: 2
-      isBossGroup: 1
-      scaleHealthInsteadOfQuantity: 1
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 5268392615084530034, guid: 069c13d2b2242bc44b9da75cd8a49e61, type: 3}
-      count: 1
-      spawnInterval: 0
-      initialDelay: 0
-      isBossGroup: 1
-      scaleHealthInsteadOfQuantity: 1
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 2206360170153121592, guid: 5efb1327e6eced04a87b6d99bffd2445, type: 3}
-      count: 1
-      spawnInterval: 10
-      initialDelay: 10
-      isBossGroup: 1
-      scaleHealthInsteadOfQuantity: 1
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 2206360170153121592, guid: d822989c737f2434eb48845ecfdfda57, type: 3}
-      count: 1
-      spawnInterval: 6
-      initialDelay: 6
-      isBossGroup: 1
-      scaleHealthInsteadOfQuantity: 1
-      isGreaterBoss: 0
-    useBossPlayerSpawn: 0
-    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
-  - waveName: 9
-    enemyGroups:
-    - enemyPrefab: {fileID: 5823305095513310861, guid: e7cfb7fc42bf3c24d9568b86f646eea1, type: 3}
-      count: 20
-      spawnInterval: 0.5
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 2206360170153121592, guid: 87deb29c860985e41a01d8e430b13380, type: 3}
-      count: 2
-      spawnInterval: 10
-      initialDelay: 5
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 1
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 419219122743540495, guid: 3b38170970cc71642b32d7490b862680, type: 3}
-      count: 4
-      spawnInterval: 4
-      initialDelay: 2
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 1
-      isGreaterBoss: 0
-    - enemyPrefab: {fileID: 419219122743540495, guid: 39d3121e7b0c40e4a873b5f1e7719a67, type: 3}
-      count: 20
-      spawnInterval: 0.5
-      initialDelay: 0
-      isBossGroup: 0
-      scaleHealthInsteadOfQuantity: 0
-      isGreaterBoss: 0
-    useBossPlayerSpawn: 0
-    bossFixedSpawnPosition: {x: 0, y: 0, z: 0}
-  - waveName: 
-    enemyGroups:
-    - enemyPrefab: {fileID: 2833666976211317869, guid: 5838f2a72e22cb046864bfbe36bda446, type: 3}
-      count: 1
-      spawnInterval: 0
-      initialDelay: 0
-      isBossGroup: 1
-      scaleHealthInsteadOfQuantity: 1
-      isGreaterBoss: 1
-    useBossPlayerSpawn: 1
-    bossFixedSpawnPosition: {x: 2, y: 2, z: 0}
-  startOnWave: 0
-  spawnPoints:
-  - {fileID: 479886630}
-  - {fileID: 317762672}
-  - {fileID: 289545206}
-  - {fileID: 1506221420}
-  - {fileID: 1376730125}
-  - {fileID: 119009539}
-  - {fileID: 466232849}
-  - {fileID: 1916779035}
-  coinCollectionTime: 1.5
-  extraEnemiesPerPlayer: 1
-  healthMultiplierPerPlayer: 0.1
 --- !u!114 &1987370469
 MonoBehaviour:
   m_ObjectHideFlags: 0

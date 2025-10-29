@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
+using Unity.Netcode;
 
 public enum ShootingPattern
 {
@@ -295,7 +296,22 @@ public class PatternShooter : MonoBehaviour
 
                 if (shieldGO != null)
                 {
+                    // 1. Pegue o NetworkObject do escudo
+                    NetworkObject netObj = shieldGO.GetComponent<NetworkObject>();
+
+                    // 2. Spawne o objeto na rede PRIMEIRO
+                    if (netObj != null)
+                    {
+                        netObj.Spawn();
+                    }
+                    else
+                    {
+                        Debug.LogError("O prefab do escudo (shieldGO) não tem um NetworkObject!");
+                    }
+
+                    // 3. AGORA é seguro definir o parent
                     shieldGO.transform.SetParent(shieldRotationParent);
+
                     activeShieldProjectiles.Add(shieldGO);
                 }
             }

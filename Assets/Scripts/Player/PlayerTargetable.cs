@@ -28,10 +28,10 @@ public class PlayerTargetable : MonoBehaviour
             // Registra o jogador quando entra no jogo
             PlayerManager.Instance.RegisterPlayer(healthSystem);
         }
-        else
-        {
-            Debug.LogWarning($"[PlayerTargetable] {gameObject.name} - PlayerManager.Instance é NULL!");
-        }
+        // else
+        // {
+        //     Debug.LogWarning($"[PlayerTargetable] {gameObject.name} - PlayerManager.Instance é NULL!");
+        // }
     }
 
     void OnDisable()

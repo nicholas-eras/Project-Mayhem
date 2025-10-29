@@ -59,14 +59,7 @@ public class BossUIHealth : MonoBehaviour
         if (isInitialized)
         {
             return;
-        }
-        
-        // === LOG DE DIAGNÓSTICO (Apenas a cada 60 frames para evitar spam) ===
-        if (Time.frameCount % 60 == 0)
-        {
-            Debug.Log($"[BossUIHealth] Procurando Linker. BossLinker é null? {bossLinker == null}");
-        }
-        // =====================================================================
+        }                        
 
         // 2. Tenta encontrar o Linker (o Boss já pode ter sido instanciado pelo WaveManager)
         bossLinker = FindObjectOfType<BossHealthLinker>();

@@ -70,6 +70,13 @@ public class AreaEffectZone : MonoBehaviour
 
             if (damageTimers.ContainsKey(target))
             {
+                // ✅ Ignora se o alvo foi desativado (morto)
+                if (target == null || !target.activeInHierarchy)
+                {
+                    damageTimers.Remove(target);
+                    return;
+                }
+    
                 damageTimers[target] += Time.deltaTime;
 
                 while (damageTimers[target] >= zoneTickInterval)
@@ -84,7 +91,10 @@ public class AreaEffectZone : MonoBehaviour
                         DamageInfo damagePacket = new DamageInfo(zoneTickDamage, damageType);
                         targetHealth.TakeDamage(damagePacket, null); // null = não ativa i-frames
                     }
-                    
+                    if (!damageTimers.ContainsKey(target))
+                    {
+                        return;
+                    }
                     damageTimers[target] -= zoneTickInterval;
                 }
             }
@@ -102,7 +112,13 @@ public class AreaEffectZone : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             GameObject target = other.gameObject;
-                        
+            if (target == null || !target.activeInHierarchy)
+            {
+                // Apenas remova da sua lista/dicionário de alvos
+                // Ex: if (targetsInside.ContainsKey(target)) targetsInside.Remove(target);
+                return;
+            }
+    
             // 2. Inicia timer de dano extra (só enquanto estiver dentro)
             if (zoneTickDamage > 0f && !targetsInZone.Contains(target))
             {
@@ -130,19 +146,22 @@ public class AreaEffectZone : MonoBehaviour
     
     private void ApplyEffectToTarget(GameObject target)
     {
+        if (target == null || !target.activeInHierarchy)
+            return;
+
         switch (effectType)
         {
             case AreaEffectType.Poison:
-                PoisonEffect poison = target.GetComponent<PoisonEffect>();
-                if (poison != null)
+                var poison = target.GetComponent<PoisonEffect>();
+                if (poison != null && poison.isActiveAndEnabled)
                 {
                     poison.ApplyPoison(penaltyValue, effectDuration, tickInterval);
                 }
                 break;
 
             case AreaEffectType.Fire:
-                FireEffect fire = target.GetComponent<FireEffect>();
-                if (fire != null)
+                var fire = target.GetComponent<FireEffect>();
+                if (fire != null && fire.isActiveAndEnabled && target.activeInHierarchy)
                 {
                     fire.ApplyFire(penaltyValue, effectDuration, tickInterval);
                 }

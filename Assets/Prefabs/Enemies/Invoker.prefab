@@ -17,6 +17,8 @@ GameObject:
   - component: {fileID: 3625692136842929782}
   - component: {fileID: 128818786}
   - component: {fileID: 5036687373643544793}
+  - component: {fileID: -4655387417126173410}
+  - component: {fileID: -8882923685440697593}
   m_Layer: 6
   m_Name: Invoker
   m_TagString: Enemy
@@ -134,6 +136,11 @@ MonoBehaviour:
   deathEffect: 0
   deathPayloadPrefab: {fileID: 0}
   areaEffectDuration: 5
+  deathPayloadScale: 1
+  activePayloadPrefab: {fileID: 0}
+  payloadScale: 1
+  isGreaterBoss: 0
+  targetCheckInterval: 1
 --- !u!114 &8142928547277015522
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -168,6 +175,8 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  isGreaterBossPart: 0
+  IsBotAgent: 0
 --- !u!114 &949095876173313355
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -202,8 +211,9 @@ MonoBehaviour:
   projectileDamage: 10
   projectileSpeed: 9
   projectileLifetime: 5
-  fireRate: 2
+  fireRateInterval: 1
   shootingRange: 13
+  playerTarget: {fileID: 0}
 --- !u!114 &128818786
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -218,6 +228,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   patternType: 2
   randomPatterns: 
+  patternSwitchTime: 5
+  usePatternSwitchTimer: 1
   burstCount: 4
   spreadAngle: 90
   totalProjectilesInColumn: 7
@@ -247,6 +259,56 @@ CapsuleCollider2D:
   m_Offset: {x: 0.12728691, y: -0.46672583}
   m_Size: {x: 10.183578, y: 12.520766}
   m_Direction: 0
+--- !u!114 &-4655387417126173410
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2206360170153121592}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 2955356772
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+--- !u!114 &-8882923685440697593
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2206360170153121592}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e96cb6065543e43c4a752faaa1468eb1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SyncPositionX: 1
+  SyncPositionY: 1
+  SyncPositionZ: 1
+  SyncRotAngleX: 1
+  SyncRotAngleY: 1
+  SyncRotAngleZ: 1
+  SyncScaleX: 1
+  SyncScaleY: 1
+  SyncScaleZ: 1
+  PositionThreshold: 0.001
+  RotAngleThreshold: 0.01
+  ScaleThreshold: 0.01
+  UseQuaternionSynchronization: 0
+  UseQuaternionCompression: 0
+  UseHalfFloatPrecision: 0
+  InLocalSpace: 0
+  Interpolate: 1
+  SlerpPosition: 0
 --- !u!1 &4440930106402533143
 GameObject:
   m_ObjectHideFlags: 0

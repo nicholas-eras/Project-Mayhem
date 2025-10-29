@@ -15,6 +15,8 @@ GameObject:
   - component: {fileID: 732549693691162694}
   - component: {fileID: 2961836951392569843}
   - component: {fileID: 1844860476181732192}
+  - component: {fileID: -3044547886710054843}
+  - component: {fileID: -2411543459820756859}
   m_Layer: 6
   m_Name: Bruiser
   m_TagString: Enemy
@@ -137,8 +139,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 5
+  canRegen: 0
+  regenRate: 1
+  regenInterval: 1
   takeDamageSoundName: 
   deathSoundName: Bruiser
+  damageCooldown: 1
   OnDeath:
     m_PersistentCalls:
       m_Calls:
@@ -154,6 +160,8 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  isGreaterBossPart: 0
+  IsBotAgent: 0
 --- !u!114 &2961836951392569843
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -168,8 +176,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 3
   collisionDamage: 10
-  attackCooldown: 1
+  stopDistance: 0
   damageType: 0
+  isBoss: 0
+  worldHealthBarPrefab: {fileID: 0}
+  healthBarMountPoint: {fileID: 0}
+  deathEffect: 0
+  deathPayloadPrefab: {fileID: 0}
+  areaEffectDuration: 5
+  deathPayloadScale: 1
+  activePayloadPrefab: {fileID: 0}
+  payloadScale: 1
+  isGreaterBoss: 0
+  targetCheckInterval: 1
 --- !u!114 &1844860476181732192
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -191,3 +210,53 @@ MonoBehaviour:
     dropChance: 1
     minAmount: 0
     maxAmount: 1
+--- !u!114 &-3044547886710054843
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5823305095513310861}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 647766846
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+--- !u!114 &-2411543459820756859
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5823305095513310861}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e96cb6065543e43c4a752faaa1468eb1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SyncPositionX: 1
+  SyncPositionY: 1
+  SyncPositionZ: 1
+  SyncRotAngleX: 1
+  SyncRotAngleY: 1
+  SyncRotAngleZ: 1
+  SyncScaleX: 1
+  SyncScaleY: 1
+  SyncScaleZ: 1
+  PositionThreshold: 0.001
+  RotAngleThreshold: 0.01
+  ScaleThreshold: 0.01
+  UseQuaternionSynchronization: 0
+  UseQuaternionCompression: 0
+  UseHalfFloatPrecision: 0
+  InLocalSpace: 0
+  Interpolate: 1
+  SlerpPosition: 0

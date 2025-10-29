@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Unity.Netcode; // <-- Adicione isto
 
 public class MapSelectionManager : MonoBehaviour
 {
@@ -10,121 +11,159 @@ public class MapSelectionManager : MonoBehaviour
     [SerializeField] private GameObject mapCardPrefab;
     [SerializeField] private Transform cardContainer;
 
-    [Header("Painéis de UI")]
+    [Header("Painéis de UI (Todos)")]
     [SerializeField] private GameObject modeSelectionPanel;
     [SerializeField] private GameObject mapSelectionPanel;
-    
-    // --- NOVAS VARIÁVEIS ---
-    [Header("Painéis de UI Multiplayer")] // <-- NOVO
-    [SerializeField] private GameObject multiplayerPanel; // <-- NOVO
-    [SerializeField] private GameObject lobbyPanel; // <-- NOVO
-    // --- FIM DAS NOVAS VARIÁVEIS ---
+    [SerializeField] private GameObject multiplayerPanel;
+    [SerializeField] private GameObject lobbyPanel;
+    [SerializeField] private GameObject waitingPanel; // <-- Painel "Aguardando..."
 
-    void Start()
+    [Header("Managers")]
+    [SerializeField] private LobbyManager lobbyManager; // <-- Referência ao Lobby de rede
+
+    void Awake()
     {
-        if (mapDatabase == null)
+        // Tenta encontrar o LobbyManager de rede
+        if (lobbyManager == null)
         {
-            Debug.LogError("Map Database não está configurado!");
-            return;
-        }
-
-        // Prepara o carrossel de mapas, mesmo que escondido
-        PopulateMapCarousel();
-
-        if (modeSelectionPanel != null)
-        {
-            // Começa mostrando APENAS a seleção de modo
-            modeSelectionPanel.SetActive(true); // <-- GARANTIDO
-            mapSelectionPanel.SetActive(false);
-            
-            // Garante que os novos painéis também comecem desligados
-            if (multiplayerPanel != null) multiplayerPanel.SetActive(false); // <-- NOVO
-            if (lobbyPanel != null) lobbyPanel.SetActive(false); // <-- NOVO
+            lobbyManager = FindObjectOfType<LobbyManager>();
         }
     }
 
-    // --- LÓGICA DE BOTÕES ---
+    // --- ESTE É O NOVO MÉTODO START() COMBINADO ---
+    void Start()
+    {
+        // 1. Prepara o carrossel (sempre)
+        PopulateMapCarousel();
 
-    /// <summary>
-    /// Chamado pelo botão "Um Jogador".
-    /// </summary>
+        // 2. Verifica o estado da rede (Lógica do NetworkConnect)
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+        {
+            if (NetworkManager.Singleton.IsHost)
+            {
+                // ESTÁ A VOLTAR COMO HOST
+                Debug.Log("MapSelectionManager: Voltando ao Lobby como Host.");
+                modeSelectionPanel.SetActive(false);
+                mapSelectionPanel.SetActive(false);
+                multiplayerPanel.SetActive(false);
+                if (waitingPanel != null) waitingPanel.SetActive(false);
+                
+                lobbyPanel.SetActive(true); // Mostra o Lobby diretamente
+            }
+            else if (NetworkManager.Singleton.IsClient)
+            {
+                // ESTÁ A VOLTAR COMO CLIENTE
+                Debug.Log("MapSelectionManager: Voltando ao Lobby como Cliente.");
+                modeSelectionPanel.SetActive(false);
+                mapSelectionPanel.SetActive(false);
+                multiplayerPanel.SetActive(false);
+                lobbyPanel.SetActive(false);
+                
+                if (waitingPanel != null) waitingPanel.SetActive(true);
+            }
+        }
+        else
+        {
+            // 3. ESTADO OFFLINE (Lógica do MapSelectionManager original)
+            Debug.Log("MapSelectionManager: Iniciando offline.");
+            modeSelectionPanel.SetActive(true); // <-- Mostra o painel inicial
+            mapSelectionPanel.SetActive(false);
+            multiplayerPanel.SetActive(false);
+            lobbyPanel.SetActive(false);
+            if (waitingPanel != null) waitingPanel.SetActive(false);
+        }
+    }
+
+    // --- LÓGICA DE BOTÕES (Modo) ---
+
     public void OnSinglePlayerSelected()
     {
-        // Define o modo de jogo (se você tiver o GameModeManager)
         if (GameModeManager.Instance != null)
         {
             GameModeManager.Instance.SetGameMode(GameMode.SinglePlayer);
         }
-
-        // Mostra o carrossel de mapas
         modeSelectionPanel.SetActive(false);
         mapSelectionPanel.SetActive(true);
     }
 
-    /// <summary>
-    /// Chamado pelo botão "Multijogador".
-    /// </summary>
-    public void OnMultiplayerSelected() // <-- LÓGICA MODIFICADA
+    public void OnMultiplayerSelected()
     {
-        // Define o modo de jogo
         if (GameModeManager.Instance != null)
         {
             GameModeManager.Instance.SetGameMode(GameMode.Multiplayer);
         }
-        
-        // NÃO mostra mais o carrossel. Mostra o painel "Hospedar/Entrar".
         modeSelectionPanel.SetActive(false);
         multiplayerPanel.SetActive(true);
     }
-
-    /// <summary>
-    /// Chamado pelo botão "Iniciar Jogo" (de dentro do Lobby).
-    /// </summary>
-    public void OnStartFromLobbyButtonSelected() // <-- NOVO
+    
+    // --- LÓGICA DE BOTÕES (Rede - do NetworkConnect) ---
+    
+    public void OnClickHost()
     {
-        // Agora sim, o Host (que está no lobby) verá o carrossel para escolher o mapa
-        lobbyPanel.SetActive(false);
-        mapSelectionPanel.SetActive(true);
-        
-        // (Aqui, no futuro, o Host avisará os Clientes sobre qual mapa carregar)
+        if (NetworkManager.Singleton.StartHost())
+        {
+            multiplayerPanel.SetActive(false);
+            lobbyPanel.SetActive(true); 
+        }
+        else
+        {
+            Debug.LogError("Falha ao iniciar Host!");
+            NetworkManager.Singleton.Shutdown(); 
+            multiplayerPanel.SetActive(true);
+            lobbyPanel.SetActive(false);
+        }
+    }
+    
+    public void OnClickJoin()
+    {
+        if (NetworkManager.Singleton.StartClient())
+        {
+            multiplayerPanel.SetActive(false); 
+            if (waitingPanel != null)
+            {
+                waitingPanel.SetActive(true);
+            }
+        }
+        else
+        {
+            Debug.LogError("Falha ao conectar como Cliente!");
+        }
     }
 
+    // --- LÓGICA DE BOTÕES (Lobby) ---
+
+    public void OnStartFromLobbyButtonSelected()
+    {
+        lobbyPanel.SetActive(false);
+        mapSelectionPanel.SetActive(true);
+    }
 
     // --- LÓGICA DE BOTÕES "VOLTAR" ---
 
-    /// <summary>
-    /// Chamado pelo botão "Voltar" do painel Hospedar/Entrar.
-    /// </summary>
-    public void BackToModeSelection() // <-- NOME MUDADO (era BackToModeSelection)
+    public void BackToModeSelection()
     {
         multiplayerPanel.SetActive(false);
-        mapSelectionPanel.SetActive(false); // Garante que tudo está desligado
+        mapSelectionPanel.SetActive(false);
         lobbyPanel.SetActive(false);
-        
-        modeSelectionPanel.SetActive(true); // Volta para a tela inicial
+        modeSelectionPanel.SetActive(true);
     }
 
-    /// <summary>
-    /// Chamado pelo botão "Voltar" do Lobby.
-    /// </summary>
-    public void BackToMultiplayerPanel() // <-- NOVO
+    public void BackToMultiplayerPanel()
     {
         lobbyPanel.SetActive(false);
         multiplayerPanel.SetActive(true);
     }
-    
-    public void QuitGame()
-    {
-        // 1. Comando principal para fechar a aplicação (funciona em builds)
-        Application.Quit();
 
-        // 2. Comando para parar a execução SE você estiver no Editor da Unity.
-        // Isso facilita o teste do botão.
-        #if UNITY_EDITOR
-                UnityEditor.EditorApplication.isPlaying = false;
-        #endif
-    }
-    
+    // --- O RESTO DO SEU SCRIPT (QuitGame, PopulateMapCarousel, etc.) ---
+
+    public void QuitGame()
+    {
+        Application.Quit();
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#endif
+    }
+    
     private void PopulateMapCarousel()
     {
         // Limpa qualquer UI antiga

@@ -15,6 +15,8 @@ GameObject:
   - component: {fileID: 3282863340257558461}
   - component: {fileID: -1563115009402968619}
   - component: {fileID: 1613433099821570428}
+  - component: {fileID: 1273878325323129000}
+  - component: {fileID: -370434672057313781}
   m_Layer: 6
   m_Name: brain
   m_TagString: Enemy
@@ -149,6 +151,8 @@ MonoBehaviour:
   deathPayloadScale: 1
   activePayloadPrefab: {fileID: 0}
   payloadScale: 1
+  isGreaterBoss: 0
+  targetCheckInterval: 1
 --- !u!114 &-1563115009402968619
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -183,6 +187,8 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  isGreaterBossPart: 0
+  IsBotAgent: 0
 --- !u!114 &1613433099821570428
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -200,3 +206,53 @@ MonoBehaviour:
     dropChance: 1
     minAmount: 1
     maxAmount: 2
+--- !u!114 &1273878325323129000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 419219122743540495}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 2118292943
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+--- !u!114 &-370434672057313781
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 419219122743540495}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e96cb6065543e43c4a752faaa1468eb1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SyncPositionX: 1
+  SyncPositionY: 1
+  SyncPositionZ: 1
+  SyncRotAngleX: 1
+  SyncRotAngleY: 1
+  SyncRotAngleZ: 1
+  SyncScaleX: 1
+  SyncScaleY: 1
+  SyncScaleZ: 1
+  PositionThreshold: 0.001
+  RotAngleThreshold: 0.01
+  ScaleThreshold: 0.01
+  UseQuaternionSynchronization: 0
+  UseQuaternionCompression: 0
+  UseHalfFloatPrecision: 0
+  InLocalSpace: 0
+  Interpolate: 1
+  SlerpPosition: 0

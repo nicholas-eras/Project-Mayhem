@@ -12,9 +12,13 @@ public class GameSceneManager : MonoBehaviour
     [SerializeField] private GameObject playerAgentPrefab;
     private GameObject mapSpecificWeapon;
     private List<Transform> spawnPoints = new List<Transform>();
+    public static bool AllPlayersSpawned { get; private set; }
 
     void Awake()
     {
+        AllPlayersSpawned = false;
+        OnAllPlayersSpawned = null;
+
         // --- PEGA A ARMA DO MAPA ---
         if (MapDataManager.Instance != null)
         {
@@ -35,36 +39,70 @@ public class GameSceneManager : MonoBehaviour
         if (spawnPoints.Count == 0) Debug.LogError("Nenhum 'PlayerSpawn' encontrado nesta cena!");
     }
 
+    // Em GameSceneManager.cs
+
     void Start()
     {
+        Debug.Log("[GameSceneManager] Start() foi chamado.");
+
+        if (NetworkManager.Singleton == null)
+        {
+            Debug.LogError("[GameSceneManager] NetworkManager.Singleton é NULO. Abortando.");
+            return;
+        }
+        
+        Debug.Log($"[GameSceneManager] IsServer: {NetworkManager.Singleton.IsServer}");
+
         // Apenas o Host/Servidor executa a lógica de spawn
         if (NetworkManager.Singleton.IsServer)
         {
+            Debug.Log("[GameSceneManager] É o Servidor. A verificar LobbyData...");
+
             if (LobbyData.SlotStates == null)
             {
-                Debug.LogError("GameSceneManager: LobbyData.SlotStates é nulo! Abortando spawn.");
-                return;
+                Debug.LogError("[GameSceneManager] LobbyData.SlotStates é nulo! Abortando spawn.");
+                // Se o LobbyData não foi guardado corretamente na cena anterior,
+                // o sinalizador AllPlayersSpawned nunca será ativado.
+                return; // <-- PONTO DE FALHA SILENCIOSA #1
             }
+            
+            Debug.Log($"[GameSceneManager] LobbyData encontrado. {LobbyData.SlotStates.Length} slots.");
+
             if (playerAgentPrefab == null)
             {
-                Debug.LogError("GameSceneManager: Player Agent Prefab não configurado!");
-                return;
+                Debug.LogError("[GameSceneManager] Player Agent Prefab não configurado! Abortando spawn.");
+                return; // <-- PONTO DE FALHA SILENCIOSA #2
             }
-
+            
+            Debug.Log("[GameSceneManager] Prefab OK. A chamar SpawnPlayersAndBots().");
             SpawnPlayersAndBots();
             
-            // *** NOVO: Espera um frame e notifica que terminou o spawn ***
+            Debug.Log("[GameSceneManager] A chamar NotifyPlayersSpawned() (que ativará o sinalizador).");
             StartCoroutine(NotifyPlayersSpawned());
+        }
+        else
+        {
+            Debug.Log("[GameSceneManager] Não é o Servidor. A saltar a lógica de spawn.");
+            
+            // --- CORRECÇÃO IMPORTANTE PARA CLIENTES ---
+            // Se formos um Cliente, não somos responsáveis por spawnar,
+            // mas as ondas (no Host) dependem de sabermos que os jogadores
+            // (neste caso, o Host) terminaram de spawnar.
+            // Para um Cliente, o "spawn" está "terminado" por defeito,
+            // pois ele não faz nada.
+            // ... MAS, o WaveManager do Cliente NÃO deve correr.
+            
+            // O problema é que se for Cliente, o sinalizador NUNCA fica true.
+            // Vamos corrigir isto no WaveManager.
         }
     }
 
     // *** NOVO: Corrotina para notificar que todos os jogadores foram spawnados ***
     private IEnumerator NotifyPlayersSpawned()
     {
-        // Espera um frame para garantir que todos os NetworkObjects foram spawnados
+        AllPlayersSpawned = true;
+        Debug.Log("[GameSceneManager] SINALIZADOR 'AllPlayersSpawned' ATIVADO.");
         yield return null;
-        
-        OnAllPlayersSpawned?.Invoke();
     }
 
     /// <summary>
@@ -202,7 +240,6 @@ private void SpawnBotObject(int skinID, Transform spawnPoint, int slotIndex)
         // Se temos spawn points suficientes, usa o correspondente ao índice
         if (index < spawnPoints.Count)
         {
-            Debug.Log($"[GameSceneManager] Usando spawn point {spawnPoints[index].name} para slot {index}");
             return spawnPoints[index];
         }
         else

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using System;
 using System.Linq;
+using Unity.Netcode; // <-- Adicione esta linha
 
 public class WaveManager : MonoBehaviour
 {
@@ -64,6 +65,13 @@ public class WaveManager : MonoBehaviour
 
     void Start()
     {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.IsServer)
+        {
+            Debug.Log("[WaveManager] Eu sou um Cliente. A desativar a lógica de spawn.");
+            this.enabled = false; // Desativa o script (para de correr Updates, etc.)
+            return; // Para a execução do Start()
+        }
+
         currentWaveIndex = Mathf.Clamp(startOnWave - 1, -1, waves.Count - 1);
         FindAndSetPlayerSpawnPoints();
 
@@ -71,37 +79,39 @@ public class WaveManager : MonoBehaviour
             Debug.LogError("WaveManager: UpgradeManager não encontrado na cena!");
 
         // *** NOVA LÓGICA: Se inscreve no evento e espera ***
-        if (GameSceneManager.OnAllPlayersSpawned != null)
-        {
-            GameSceneManager.OnAllPlayersSpawned += OnPlayersSpawned;
-        }
-        else
-        {
-            // Fallback: se o evento não existir, espera um tempo e inicia
-            Debug.LogWarning("[WaveManager] Evento OnAllPlayersSpawned não encontrado. Usando fallback.");
-            StartCoroutine(DelayedStart());
-        }
+        // if (GameSceneManager.OnAllPlayersSpawned != null)
+        // {
+        //     GameSceneManager.OnAllPlayersSpawned += OnPlayersSpawned;
+        // }
+        // else
+        // {
+        //     // Fallback: se o evento não existir, espera um tempo e inicia
+        //     // StartCoroutine(DelayedStart());
+        //     playersReady = true;
+        //     HandleShopClosed();
+        // }
+        HandleShopClosed();
     }
 
     // *** NOVO: Método chamado quando todos os jogadores foram spawnados ***
-    private void OnPlayersSpawned()
-    {
-        playersReady = true;
+    // private void OnPlayersSpawned()
+    // {
+    //     playersReady = true;
         
-        // Remove a inscrição do evento
-        GameSceneManager.OnAllPlayersSpawned -= OnPlayersSpawned;
+    //     // Remove a inscrição do evento
+    //     GameSceneManager.OnAllPlayersSpawned -= OnPlayersSpawned;
         
-        // Inicia as ondas
-        HandleShopClosed();
-    }
+    //     // Inicia as ondas
+    //     HandleShopClosed();
+    // }
 
-    // *** NOVO: Fallback caso o evento não funcione ***
-    private IEnumerator DelayedStart()
-    {
-        yield return new WaitForSeconds(.1f);
-        playersReady = true;
-        HandleShopClosed();
-    }
+    // // *** NOVO: Fallback caso o evento não funcione ***
+    // private IEnumerator DelayedStart()
+    // {
+    //     yield return new WaitForSeconds(.1f);
+    //     playersReady = true;
+    //     HandleShopClosed();
+    // }
 
     private void FindAndSetPlayerSpawnPoints()
     {
@@ -148,7 +158,7 @@ public class WaveManager : MonoBehaviour
         }
         
         // *** IMPORTANTE: Remove a inscrição do evento ***
-        GameSceneManager.OnAllPlayersSpawned -= OnPlayersSpawned;
+        // GameSceneManager.OnAllPlayersSpawned -= OnPlayersSpawned;
         
         StopAllCoroutines();
     }
@@ -212,11 +222,9 @@ public class WaveManager : MonoBehaviour
     IEnumerator StartNextWave(bool advanceWaveIndex = true)
     {
         // *** NOVA VERIFICAÇÃO: Espera se os jogadores não estão prontos ***
-        if (!playersReady)
-        {
-            Debug.LogWarning("[WaveManager] Jogadores não estão prontos. Aguardando...");
-            yield return new WaitUntil(() => playersReady);
-        }
+Debug.Log("[WaveManager] A aguardar sinal do GameSceneManager...");
+yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
+        Debug.Log("[WaveManager] Sinal recebido! A iniciar a onda.");
 
         if (advanceWaveIndex)
         {
@@ -258,57 +266,11 @@ public class WaveManager : MonoBehaviour
         {
             playerCount = PlayerManager.Instance.GetActivePlayerCount();
             playerCount = Mathf.Max(1, playerCount);
-            Debug.Log($"[WaveManager] PlayerCount correto: {playerCount} jogadores+bots");
         }
         
      
         OnNewWaveStarted?.Invoke(currentWave.waveName ?? $"Onda {currentWaveIndex + 1}");
-
-        // LOG DA COMPOSIÇÃO DA ONDA
-        Debug.Log("========================================");
-        Debug.Log($"COMPOSIÇÃO DA ONDA {currentWaveIndex}: {currentWave.waveName}");
-        Debug.Log($"Jogadores+Bots Ativos: {playerCount}");
-        Debug.Log("----------------------------------------");
-        
-        int groupIndex = 0;
-        foreach (var group in currentWave.enemyGroups)
-        {
-            float enemyHealthMultiplier = group.scaleHealthInsteadOfQuantity ? playerCount : 1;
-            Debug.Log($"Jogadores+Bots Ativos: {playerCount}. Multiplicador HP Inimigo: {enemyHealthMultiplier:F2}");
-
-            string enemyName = group.enemyPrefab != null ? group.enemyPrefab.name : "NULL";
-            
-            if (group.isBossGroup)
-            {
-                Debug.Log($"[Grupo {groupIndex}] BOSS: {enemyName} x1 (Vida x{enemyHealthMultiplier:F2})");
-            }
-            else if (group.count <= 0)
-            {
-                Debug.Log($"[Grupo {groupIndex}] MINIONS INFINITOS: {enemyName} (enquanto boss vivo)");
-            }
-            else
-            {
-                int baseCount = group.count;
-                int finalCount;
-                float finalHealthMult;
-                
-                if (group.scaleHealthInsteadOfQuantity)
-                {
-                    finalCount = baseCount;
-                    finalHealthMult = enemyHealthMultiplier * playerCount;
-                    Debug.Log($"[Grupo {groupIndex}] {enemyName} x{finalCount} (VIDA ESCALADA x{finalHealthMult:F2})");
-                }
-                else
-                {
-                    finalCount = baseCount * playerCount;
-                    finalHealthMult = enemyHealthMultiplier;
-                    Debug.Log($"[Grupo {groupIndex}] {enemyName} x{finalCount} (QUANTIDADE ESCALADA, Vida x{finalHealthMult:F2})");
-                }
-            }
-            groupIndex++;
-        }
-        Debug.Log("========================================");
-
+       
         List<Coroutine> runningSpawners = new List<Coroutine>();
         foreach (var group in currentWave.enemyGroups)
         {
@@ -419,8 +381,11 @@ public class WaveManager : MonoBehaviour
             {
                 if (spawnPoints != null && spawnPoints.Length > 0)
                 {
-                     Transform targetSpawnPoint = spawnPoints[UnityEngine.Random.Range(0, spawnPoints.Length)];
-                     spawnPosition = targetSpawnPoint.position;
+                    Transform targetSpawnPoint = spawnPoints[UnityEngine.Random.Range(0, spawnPoints.Length)];
+                     if (targetSpawnPoint)
+                    {
+                        spawnPosition = targetSpawnPoint.position;
+                    }                    
                 } 
                 else 
                 {
@@ -473,6 +438,16 @@ public class WaveManager : MonoBehaviour
             enemyHealth.MaxHealth = baseMaxHealth * healthMultiplier;
             enemyHealth.HealFull();
         }
+        NetworkObject netObj = enemyInstance.GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            netObj.Spawn(true);
+        }
+        else
+        {
+            Debug.LogWarning($"[WaveManager] Inimigo '{enemyPrefab.name}' foi spawnado SEM NetworkObject. Clientes não o verão.");
+        }
+
         return enemyInstance;
     }
 }
