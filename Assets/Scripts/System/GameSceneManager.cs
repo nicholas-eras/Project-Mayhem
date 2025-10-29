@@ -13,6 +13,14 @@ public class GameSceneManager : MonoBehaviour
     private GameObject mapSpecificWeapon;
     private List<Transform> spawnPoints = new List<Transform>();
     public static bool AllPlayersSpawned { get; private set; }
+    
+    // --- ADICIONE ESTAS DUAS LINHAS ---
+    [Header("UI (Barras de Vida)")]
+    [Tooltip("Arraste aqui o seu Prefab da Barra de Vida (o que tem o script FollowTargetUI).")]
+    [SerializeField] private GameObject healthBarPrefab;
+    [Tooltip("Arraste aqui o seu Canvas principal da cena de jogo.")]
+    [SerializeField] private Transform healthBarContainer; // (O Canvas)
+    // --- FIM DA ADIÇÃO ---
 
     void Awake()
     {
@@ -142,30 +150,83 @@ public class GameSceneManager : MonoBehaviour
         }
     }
 
+    // Em GameSceneManager.cs (adicione este novo método)
+
+    /// <summary>
+    /// Instancia uma barra de vida e a configura para seguir um alvo.
+    /// </summary>
+    /// <param name="targetHealth">O HealthSystem do alvo (jogador ou bot).</param>
+    private void SpawnHealthBarFor(HealthSystem targetHealth)
+    {
+        // Verifica se temos tudo o que é preciso
+        if (healthBarPrefab == null || healthBarContainer == null)
+        {
+            Debug.LogWarning("GameSceneManager: Prefab da barra de vida ou Container (Canvas) não configurado!");
+            return;
+        }
+
+        // 1. Instancia (cria) o prefab da barra de vida
+        //    e o coloca como filho do Canvas (healthBarContainer)
+        GameObject barInstance = Instantiate(healthBarPrefab, healthBarContainer);
+
+        // 2. Pega no script FollowTargetUI que está nessa barra de vida
+        FollowTargetUI followScript = barInstance.GetComponent<FollowTargetUI>();
+
+        // 3. Chama o Setup() para ligar a barra de vida ao seu alvo
+        if (followScript != null)
+        {
+            followScript.Setup(targetHealth);
+        }
+        else
+        {
+            Debug.LogError("O prefab da barra de vida não tem o script FollowTargetUI!");
+        }
+    }
+
+
     /// <summary>
     /// (APENAS HOST) Spawna o NetworkObject para um jogador humano específico.
     /// </summary>
+    // Em GameSceneManager.cs
+
     private void SpawnPlayerObject(ulong clientId, int skinID, Transform spawnPoint, int slotIndex)
     {
-         GameObject playerGO = Instantiate(playerAgentPrefab, spawnPoint.position, spawnPoint.rotation);
-         NetworkObject netObj = playerGO.GetComponent<NetworkObject>();
+        GameObject playerGO = Instantiate(playerAgentPrefab, spawnPoint.position, spawnPoint.rotation);
+        NetworkObject netObj = playerGO.GetComponent<NetworkObject>();
 
-         if (netObj != null)
-         {
-              playerGO.name = $"Player_Client[{clientId}]_Slot[{slotIndex}]";
-              netObj.SpawnAsPlayerObject(clientId, true);
+        if (netObj != null)
+        {
+            playerGO.name = $"Player_Client[{clientId}]_Slot[{slotIndex}]";
+            netObj.SpawnAsPlayerObject(clientId, true);
 
-              AgentManager agent = playerGO.GetComponent<AgentManager>();
-              if (agent != null)
-              {
-                   agent.InitializeAgent(isBot: false, skinID: skinID);
-              }
-         }
-         else
-         {
-              Debug.LogError("PlayerAgent_Prefab não tem NetworkObject!");
-              Destroy(playerGO);
-         }
+            AgentManager agent = playerGO.GetComponent<AgentManager>();
+            if (agent != null)
+            {
+                agent.InitializeAgent(isBot: false, skinID: skinID);
+            }
+
+            // --- LÓGICA DA BARRA DE VIDA (MODIFICADA) ---
+            HealthSystem hs = playerGO.GetComponent<HealthSystem>();
+            if (hs != null)
+            {
+                // Verifica se o ID do jogador que estamos a spawnar
+                // é DIFERENTE do ID local do Servidor (o Host).
+                if (clientId != NetworkManager.Singleton.LocalClientId)
+                {
+                    // É um Cliente. Spawna a barra de vida para o Host ver.
+                    SpawnHealthBarFor(hs);
+                }
+                // Se (clientId == NetworkManager.Singleton.LocalClientId),
+                // é o próprio Host. Não fazemos nada,
+                // porque o Host usa o seu HUD estático (PlayerHUDUI).
+            }
+            // --- FIM DA MODIFICAÇÃO ---
+        }
+        else
+        {
+            Debug.LogError("PlayerAgent_Prefab não tem NetworkObject!");
+            Destroy(playerGO);
+        }
     }
 
     // No GameSceneManager, modifique o SpawnBotObject:
@@ -177,40 +238,46 @@ private void SpawnBotObject(int skinID, Transform spawnPoint, int slotIndex)
     GameObject botGO = Instantiate(playerAgentPrefab, spawnPoint.position, spawnPoint.rotation);
     NetworkObject netObj = botGO.GetComponent<NetworkObject>();
 
-    if (netObj != null)
-    {
-        botGO.name = $"Player_Bot_Slot[{slotIndex}]";
-        
-        // *** CONFIGURAÇÃO DO BOT ANTES DO SPAWN ***
-        AgentManager agent = botGO.GetComponent<AgentManager>();
-        if (agent != null)
+        if (netObj != null)
         {
-            // Marca como bot ANTES do spawn (usando método temporário)
-            agent.SetupBotInitialState(skinID);
-        }
+            botGO.name = $"Player_Bot_Slot[{slotIndex}]";
 
-        // *** SPAWNA O BOT ***
-        netObj.Spawn(true);
-        
-        // *** CONFIGURAÇÃO PÓS-SPAWN ***
-        if (agent != null && NetworkManager.Singleton.IsServer) // <- CORREÇÃO AQUI
-        {
-            // Agora que o NetworkObject foi spawnado, podemos configurar as NetworkVariables
-            StartCoroutine(ConfigureBotAfterSpawn(agent, skinID));
-        }
+            // *** CONFIGURAÇÃO DO BOT ANTES DO SPAWN ***
+            AgentManager agent = botGO.GetComponent<AgentManager>();
+            if (agent != null)
+            {
+                // Marca como bot ANTES do spawn (usando método temporário)
+                agent.SetupBotInitialState(skinID);
+            }
 
-        // Configura arma do bot
-        PlayerWeaponManager botWeaponManager = botGO.GetComponent<PlayerWeaponManager>();
-        if (botWeaponManager != null)
-        {
-            botWeaponManager.InitializeStartingWeapon(mapSpecificWeapon);
+            // *** SPAWNA O BOT ***
+            netObj.Spawn(true);
+
+            // *** CONFIGURAÇÃO PÓS-SPAWN ***
+            if (agent != null && NetworkManager.Singleton.IsServer) // <- CORREÇÃO AQUI
+            {
+                // Agora que o NetworkObject foi spawnado, podemos configurar as NetworkVariables
+                StartCoroutine(ConfigureBotAfterSpawn(agent, skinID));
+            }
+
+            // Configura arma do bot
+            PlayerWeaponManager botWeaponManager = botGO.GetComponent<PlayerWeaponManager>();
+            if (botWeaponManager != null)
+            {
+                botWeaponManager.InitializeStartingWeapon(mapSpecificWeapon);
+            }
         }
-    }
-    else 
-    { 
-        Debug.LogError("Falha ao spawnar bot: NetworkObject nulo");
-        Destroy(botGO);
-    }
+        else
+        {
+            Debug.LogError("Falha ao spawnar bot: NetworkObject nulo");
+            Destroy(botGO);
+        }
+    
+    HealthSystem hs = botGO.GetComponent<HealthSystem>();
+        if (hs != null)
+        {
+            SpawnHealthBarFor(hs); // <-- Chama a nova função
+        }
 }
 
     // *** NOVO: Corrotina para configurar bot após spawn ***

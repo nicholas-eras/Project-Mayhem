@@ -132,8 +132,34 @@ public class MapSelectionManager : MonoBehaviour
 
     // --- LÓGICA DE BOTÕES (Lobby) ---
 
+// Em MapSelectionManager.cs
+
     public void OnStartFromLobbyButtonSelected()
     {
+        // --- CÓDIGO DE GARANTIA ---
+        // Se a referência do lobbyManager estiver nula (esquecida no Inspector),
+        // tenta encontrá-la agora.
+        if (lobbyManager == null)
+        {
+            Debug.LogWarning("[MapSelectionManager] Referência do LobbyManager estava nula, a tentar encontrá-la...");
+            lobbyManager = FindObjectOfType<LobbyManager>();
+        }
+        // --- FIM DO CÓDIGO DE GARANTIA ---
+
+
+        // Agora tenta guardar os dados
+        if (lobbyManager != null)
+        {
+            Debug.Log("[MapSelectionManager] A chamar CacheLobbyDataForSceneLoad() para guardar skins/bots.");
+            lobbyManager.CacheLobbyDataForSceneLoad();
+        }
+        else
+        {
+            // Se mesmo assim não encontrou, falha e avisa.
+            Debug.LogError("[MapSelectionManager] FALHA CRÍTICA: Não foi possível encontrar o LobbyManager para guardar os dados!");
+        }
+        
+        // (O seu código original)
         lobbyPanel.SetActive(false);
         mapSelectionPanel.SetActive(true);
     }

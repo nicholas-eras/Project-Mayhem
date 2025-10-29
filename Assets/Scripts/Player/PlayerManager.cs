@@ -8,6 +8,18 @@ public class PlayerManager : MonoBehaviour
 
     private List<HealthSystem> activePlayerHealths = new List<HealthSystem>();
 
+    // --- NOVAS VARIÁVEIS AQUI ---
+    [Header("World Health Bars")]
+    [Tooltip("O Prefab da barra de vida (Slider com script FollowTargetUI)")]
+    [SerializeField] private GameObject healthBarPrefab;
+
+    [Tooltip("O Canvas 'Screen Space - Overlay' onde as barras serão criadas")]
+    [SerializeField] private Transform healthBarCanvas;
+
+    // Dicionário para rastrear qual barra de vida pertence a qual HealthSystem
+    private Dictionary<HealthSystem, GameObject> healthBarInstances = new Dictionary<HealthSystem, GameObject>();
+    // --- FIM DAS NOVAS VARIÁVEIS ---
+
     private void Awake()
     {
         if (Instance != null && Instance != this) Destroy(gameObject);
@@ -19,9 +31,43 @@ public class PlayerManager : MonoBehaviour
     /// </summary>
     public void RegisterPlayer(HealthSystem playerHealth)
     {
-        if (!activePlayerHealths.Contains(playerHealth))
+        if (playerHealth == null) return;
+        if (activePlayerHealths.Contains(playerHealth)) return; // Já registrado
+
+        activePlayerHealths.Add(playerHealth);
+
+        // --- LÓGICA PARA CRIAR A BARRA DE VIDA ---
+
+        // Se for um jogador humano, NÃO crie a barra flutuante.
+        // Assumimos que ele já tem a UI estática (healthBarP1, etc)
+        if (IsHumanPlayer(playerHealth.gameObject))
         {
-            activePlayerHealths.Add(playerHealth);
+            return;
+        }
+
+        // Se chegou aqui, é um BOT.
+        // Verifica se temos os prefabs e se já não existe uma barra para ele
+        if (healthBarPrefab != null && healthBarCanvas != null && !healthBarInstances.ContainsKey(playerHealth))
+        {
+            // 1. Instancia a barra de vida como filha do Canvas
+            GameObject barInstance = Instantiate(healthBarPrefab, healthBarCanvas);
+
+            // 2. Pega o script de seguir
+            FollowTargetUI barUI = barInstance.GetComponent<FollowTargetUI>();
+
+            if (barUI != null)
+            {
+                // 3. Configura a barra (dizendo quem ela deve seguir e ouvir)
+                barUI.Setup(playerHealth);
+
+                // 4. Armazena a referência para destruí-la depois
+                healthBarInstances.Add(playerHealth, barInstance);
+            }
+            else
+            {
+                Debug.LogError("PlayerManager: O Prefab da barra de vida não tem o script 'FollowTargetUI'!");
+                Destroy(barInstance); // Limpa o objeto inútil
+            }
         }
     }
 
@@ -31,16 +77,36 @@ public class PlayerManager : MonoBehaviour
     /// </summary>
     public void UnregisterPlayer(HealthSystem playerHealth)
     {
+        if (playerHealth == null) return;
+
         if (activePlayerHealths.Contains(playerHealth))
         {
             activePlayerHealths.Remove(playerHealth);
+
+            // --- LÓGICA PARA DESTRUIR A BARRA DE VIDA ---
+            if (healthBarInstances.ContainsKey(playerHealth))
+            {
+                // 1. Pega a referência da barra
+                GameObject barInstance = healthBarInstances[playerHealth];
+
+                // 2. Remove do dicionário
+                healthBarInstances.Remove(playerHealth);
+
+                // 3. Destrói o GameObject da barra de vida
+                if (barInstance != null)
+                {
+                    Destroy(barInstance);
+                }
+            }
+            // --- FIM DA LÓGICA ---
+
 
             if (activePlayerHealths.Count == 0)
             {
                 Debug.LogWarning("[PlayerManager] Não há mais jogadores na partida!");
             }
         }
-    }
+    }    
 
     // *** MÉTODOS NOVOS PARA IDENTIFICAR JOGADORES HUMANOS ***
 

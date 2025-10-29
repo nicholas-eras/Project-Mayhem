@@ -297,60 +297,63 @@ public class HealthSystem : MonoBehaviour
         sourcesOnCooldown.Clear();
     }
 
-// DENTRO DE HealthSystem.cs -> Die()
     private void Die()
     {
         if (isDead) return;
         isDead = true;
 
-        // Verifica se é Player (pela tag) OU se tem o componente BotController
+        // --- ESTA É A MUDANÇA PRINCIPAL ---
+        // 1. DISPARA O EVENTO DE MORTE PRIMEIRO!
+        // Isto avisa a barra de vida (FollowTargetUI) e outros sistemas
+        // ANTES de o objeto ser desativado.
+        OnDeath?.Invoke();
+        // --- FIM DA MUDANÇA ---
+
+        // Agora, o resto da lógica pode acontecer
         bool isPlayerOrBot = gameObject.CompareTag("Player") || GetComponent<BotController>() != null;
 
         if (isPlayerOrBot)
         {
             // --- É O JOGADOR OU BOT ---
-            // Tenta pegar os componentes
             PlayerController pc = GetComponent<PlayerController>();
             BotController bc = GetComponent<BotController>();
             PlayerWeaponManager pwm = GetComponent<PlayerWeaponManager>();
 
-            // Desativa os componentes SE eles existirem
             if (pc != null) pc.enabled = false;
             if (bc != null) bc.enabled = false;
             if (pwm != null) pwm.enabled = false;
 
-            // Toca o som de morte, se houver
             if (!string.IsNullOrEmpty(deathSoundName))
             {
                 AudioManager.Instance?.PlaySFX(deathSoundName);
             }
 
-            // Desativa o GameObject. Isso chamará OnDisable() no PlayerTargetable,
-            // que avisará o PlayerManager.
+            // 2. AGORA é seguro desativar o objeto.
             gameObject.SetActive(false);
         }
         else // É um Inimigo (Não Player nem Bot)
         {
             // --- É UM INIMIGO ---
-            OnDeath?.Invoke(); // Dispara evento para loot, etc.
+            // (O Invoke já foi feito, removemo-lo daqui)
+            // OnDeath?.Invoke(); // <-- APAGUE O DUPLICADO DAQUI
 
             if (!string.IsNullOrEmpty(deathSoundName))
             {
-                 AudioManager.Instance?.PlaySFX(deathSoundName);
+                AudioManager.Instance?.PlaySFX(deathSoundName);
             }
 
             EnemyController enemyController = GetComponent<EnemyController>();
             if (enemyController != null)
             {
-                enemyController.Die(); // O EnemyController cuida do efeito de morte e Destroy
+                enemyController.Die();
             }
             else
             {
-                Destroy(gameObject); // Fallback: Apenas destrói
+                Destroy(gameObject);
             }
         }
     }
-    
+
     public void Heal(float amount)
     {
         currentHealth += amount;
