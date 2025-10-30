@@ -62,6 +62,7 @@ public class WaveManager : MonoBehaviour
     private Vector3 playerBossSpawnPosition = Vector3.zero;
     private GameObject currentBossInstance = null;
     private bool playersReady = false; // *** NOVO: Flag para controlar se jogadores estão prontos ***
+    private GameSceneManager gameSceneManager; // <-- ADICIONE ESTA LINHA
 
     void Start()
     {
@@ -74,6 +75,7 @@ public class WaveManager : MonoBehaviour
 
         currentWaveIndex = Mathf.Clamp(startOnWave - 1, -1, waves.Count - 1);
         FindAndSetPlayerSpawnPoints();
+        gameSceneManager = FindObjectOfType<GameSceneManager>();
 
         if (UpgradeManager.Instance == null)
             Debug.LogError("WaveManager: UpgradeManager não encontrado na cena!");
@@ -215,6 +217,22 @@ public class WaveManager : MonoBehaviour
             if (hs != null)
             {
                 hs.ResetForRetry();
+                // --- ADICIONE ESTA LÓGICA ---
+                // Agora, recria a barra de vida (se necessário)
+                if (gameSceneManager != null)
+                {
+                    AgentManager agent = playerTarget.GetComponent<AgentManager>();
+                    if (agent != null)
+                    {
+                        // Só spawnamos a barra se for um Bot
+                        // OU se for Humano MAS não for o Dono (IsOwner)
+                        // (O Jogador local usa o HUD estático)
+                        if (agent.IsPlayerBot() || (agent.IsOwner == false))
+                        {
+                            gameSceneManager.SpawnHealthBarFor(hs);
+                        }
+                    }
+                }                
             }
         }
     }
@@ -374,7 +392,9 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
                 groupHealthMultiplier = baseHealthMultiplier;
             }
         }
-
+        Debug.Log(scaledCount);
+        Debug.Log(baseCount);
+        Debug.Log("");
         if (!isInfiniteSpawn)
         {
             for (int i = 0; i < scaledCount; i++)
@@ -382,15 +402,15 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
                 if (spawnPoints != null && spawnPoints.Length > 0)
                 {
                     Transform targetSpawnPoint = spawnPoints[UnityEngine.Random.Range(0, spawnPoints.Length)];
-                     if (targetSpawnPoint)
+                    if (targetSpawnPoint)
                     {
                         spawnPosition = targetSpawnPoint.position;
-                    }                    
-                } 
-                else 
+                    }
+                }
+                else
                 {
-                     spawnPosition = transform.position;
-                     Debug.LogWarning("Nenhum ponto de spawn de inimigo configurado!");
+                    spawnPosition = transform.position;
+                    Debug.LogWarning("Nenhum ponto de spawn de inimigo configurado!");
                 }
 
                 SpawnEnemy(group.enemyPrefab, spawnPosition, groupHealthMultiplier);
@@ -401,15 +421,15 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
         {
             while (currentBossInstance != null)
             {
-                 if (spawnPoints != null && spawnPoints.Length > 0) 
-                 {
-                     Transform targetSpawnPoint = spawnPoints[UnityEngine.Random.Range(0, spawnPoints.Length)];
-                     spawnPosition = targetSpawnPoint.position;
-                 } 
-                 else 
-                 { 
-                     spawnPosition = transform.position; 
-                 }
+                if (spawnPoints != null && spawnPoints.Length > 0)
+                {
+                    Transform targetSpawnPoint = spawnPoints[UnityEngine.Random.Range(0, spawnPoints.Length)];
+                    spawnPosition = targetSpawnPoint.position;
+                }
+                else
+                {
+                    spawnPosition = transform.position;
+                }
 
                 SpawnEnemy(group.enemyPrefab, spawnPosition, groupHealthMultiplier);
                 yield return new WaitForSeconds(group.spawnInterval);
@@ -417,7 +437,7 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
         }
         else if (isInfiniteSpawn && currentBossInstance == null)
         {
-             Debug.LogWarning($"Grupo '{group.enemyPrefab.name}' configurado para spawn infinito sem Boss.");
+            Debug.LogWarning($"Grupo '{group.enemyPrefab.name}' configurado para spawn infinito sem Boss.");
         }
     }
 

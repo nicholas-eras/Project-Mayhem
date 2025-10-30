@@ -55,6 +55,14 @@ public class AgentManager : NetworkBehaviour
     /// </summary>
     public override void OnNetworkSpawn()
     {
+        base.OnNetworkSpawn();
+
+        // Diz ao Gestor de UI LOCAL para criar um painel de status para mim
+        if (TeamStatusUIManager.Instance != null)
+        {
+            TeamStatusUIManager.Instance.RegisterPlayer(this);
+        }
+
         // --- CHECAGEM SINGLE PLAYER ---
         // Se este objeto foi spawnado pelo SinglePlayerManager, ele já foi inicializado.
         // A flag 'isSinglePlayer' nos diz para pular a lógica de rede/conexão local.
@@ -168,6 +176,14 @@ public class AgentManager : NetworkBehaviour
     /// </summary>
     public override void OnNetworkDespawn()
     {
+        base.OnNetworkDespawn();
+
+        // Diz ao Gestor de UI LOCAL para destruir o meu painel de status
+        if (TeamStatusUIManager.Instance != null)
+        {
+            TeamStatusUIManager.Instance.UnregisterPlayer(this);
+        }
+        
         // Limpa as inscrições para evitar erros de referência se o objeto for reutilizado ou destruído
         if (!isSinglePlayer) // Só desinscreve se estava inscrito (não no Single Player)
         {

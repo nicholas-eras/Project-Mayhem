@@ -156,7 +156,7 @@ public class GameSceneManager : MonoBehaviour
     /// Instancia uma barra de vida e a configura para seguir um alvo.
     /// </summary>
     /// <param name="targetHealth">O HealthSystem do alvo (jogador ou bot).</param>
-    private void SpawnHealthBarFor(HealthSystem targetHealth)
+    public void SpawnHealthBarFor(HealthSystem targetHealth)
     {
         // Verifica se temos tudo o que é preciso
         if (healthBarPrefab == null || healthBarContainer == null)

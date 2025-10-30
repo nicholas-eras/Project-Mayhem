@@ -1,57 +1,48 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using System.Linq; // <-- ADICIONE O LINQ
+using System.Collections; // <-- ADICIONE O COLLECTIONS
+using Unity.Netcode; // <-- ADICIONE O NETCODE
 
 public class UpgradeManager : MonoBehaviour
 {
-    // --- FIX 1: ADD THE STATIC INSTANCE PROPERTY ---
     public static UpgradeManager Instance { get; private set; }
 
     [Header("Referências")]
     [SerializeField] private GameObject upgradePanel;
     [SerializeField] private GameObject upgradeCardPrefab;
     [SerializeField] private Transform cardContainer;
+    
+    // --- Referências do Jogador Humano (do seu RegisterPlayer) ---
     private PlayerWallet playerWallet;
     private PlayerController playerController;
     private HealthSystem playerHealthSystem;
     private PlayerWeaponManager playerWeaponManager;
+    private PlayerUpgradeTracker localHumanPlayerTracker; // <-- ADICIONADO
+    // ---
 
-    [Header("Configuração")]
-    [Tooltip("Todos os upgrades possíveis no jogo.")]
+    [Header("Configuração da Loja")]
     [SerializeField] private List<UpgradeData> allUpgrades;
     [SerializeField] private int optionsToShow = 4;
+    [SerializeField] private int rerollCost = 50;
+    [SerializeField] private float botThinkTime = 0.5f; // Tempo (em segundos reais) que o bot "pensa"
     
-    // --- NOVO: Custo para atualizar (reroll) as opções da loja ---
-    [SerializeField] private int rerollCost = 50; 
-
     public event UnityAction OnShopClosed;
-
-    private Dictionary<UpgradeData, int> upgradeLevelsByAsset = new Dictionary<UpgradeData, int>();
-    [SerializeField] private PlayerStatusUI playerStatusUI;
-
-    [Header("Input Control")]
-    // --- MODIFICADO: Remover [SerializeField] ---
+    
+    // --- DICIONÁRIO GLOBAL REMOVIDO ---
     private JoystickMove movementInputScript;
-    private GameObject joystickVisual; // O Spawner também nos dará isso
+    private GameObject joystickVisual;
     public static bool IsShopOpen { get; private set; } = false;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-        }
-        else
-        {
-            Instance = this;
-            // Opcional: DontDestroyOnLoad(gameObject); se ele estiver em uma cena persistente
-        }
+        if (Instance != null && Instance != this) Destroy(gameObject);
+        else Instance = this;
     }
 
-    // --- NOVO MÉTODO PÚBLICO DE REGISTRO ---
     /// <summary>
-    /// Chamado pelo PlayerSpawner para conectar o P1 (ou o jogador alvo)
-    /// a este UpgradeManager.
+    /// O seu método original. Agora ele também guarda o Tracker.
     /// </summary>
     public void RegisterPlayer(GameObject player, JoystickMove joystickScript, GameObject joystickViz)
     {
@@ -61,43 +52,40 @@ public class UpgradeManager : MonoBehaviour
             return;
         }
 
-        // 1. Pega todos os componentes do jogador
+        // 1. Pega todos os componentes do jogador humano
         playerWallet = player.GetComponent<PlayerWallet>();
         playerController = player.GetComponent<PlayerController>();
         playerHealthSystem = player.GetComponent<HealthSystem>();
         playerWeaponManager = player.GetComponent<PlayerWeaponManager>();
+        
+        // --- ADICIONADO ---
+        localHumanPlayerTracker = player.GetComponent<PlayerUpgradeTracker>();
+        // --- FIM ---
         
         // 2. Armazena as referências do joystick
         movementInputScript = joystickScript;
         joystickVisual = joystickViz;
 
         // 3. Verifica se tudo foi encontrado
-        if (playerWallet == null || playerController == null || playerHealthSystem == null || playerWeaponManager == null)
+        if (playerWallet == null || playerController == null || playerHealthSystem == null || playerWeaponManager == null || localHumanPlayerTracker == null)
         {
             Debug.LogError($"UpgradeManager: Falha ao pegar todos os componentes do Jogador '{player.name}'!", player);
         }
     }
     
-    // --- FIM DO NOVO MÉTODO ---
-
     public void ShowUpgradeScreen()
     {
-        // --- VERIFICAÇÃO DE SEGURANÇA ---
-        if (playerHealthSystem == null)
+        // 1. VERIFICAÇÃO DE SEGURANÇA (para o Jogador Humano)
+        if (localHumanPlayerTracker == null)
         {
-            Debug.LogError("Loja aberta, mas NENHUM JOGADOR foi registrado no UpgradeManager! Chame RegisterPlayer() no PlayerSpawner.");
-            return; // Impede a loja de abrir se o jogador não existe
+            Debug.LogError("Loja aberta, mas NENHUM JOGADOR HUMANO foi registrado! Chame RegisterPlayer().");
+            return; 
         }
-        // --- FIM DA VERIFICAÇÃO ---
         
+        // 2. PAUSA O JOGO E PREPARA A UI (para o Humano)
         Time.timeScale = 0f;
         upgradePanel.SetActive(true);
         IsShopOpen = true;
-        
-        if (playerStatusUI != null)
-        {
-            playerStatusUI.Setup(playerController, playerHealthSystem, playerWeaponManager);
-        }
         
         if (movementInputScript != null)
         {
@@ -108,47 +96,134 @@ public class UpgradeManager : MonoBehaviour
             joystickVisual.SetActive(false);
         }
         
-        GerarNovasCartas();
+        // 3. GERA AS CARTAS (para o Humano)
+        GerarNovasCartas(localHumanPlayerTracker);
+
+        // --- 4. INICIA A LÓGICA DOS BOTS ---
+        // (Assumindo que os bots têm o componente AgentManager)
+        AgentManager[] allAgents = FindObjectsOfType<AgentManager>(true);
+        
+        foreach (AgentManager agent in allAgents)
+        {
+            if (agent.IsPlayerBot())
+            {
+                PlayerUpgradeTracker botTracker = agent.GetComponent<PlayerUpgradeTracker>();
+                if (botTracker != null)
+                {
+                    StartCoroutine(RunBotUpgradeLogic(botTracker));
+                }
+            }
+        }
+        // --- FIM DA LÓGICA DOS BOTS ---
+    }
+    
+    /// <summary>
+    /// Lógica de IA para um Bot comprar upgrades.
+    /// Usa WaitForSecondsRealtime para rodar com o Time.timeScale = 0
+    /// </summary>
+    private IEnumerator RunBotUpgradeLogic(PlayerUpgradeTracker botTracker)
+    {
+        Debug.Log($"[Bot {botTracker.name}] a verificar a loja...");
+        yield return new WaitForSecondsRealtime(botThinkTime); // Pensa por um momento
+
+        // Loop: "Enquanto eu tiver dinheiro, continuo a comprar"
+        while (botTracker.Wallet.CurrentMoney > 0)
+        {
+            // 1. Encontra o upgrade mais barato que o bot pode comprar
+            UpgradeData bestUpgrade = ChooseBestUpgradeForBot(botTracker);
+
+            if (bestUpgrade == null)
+            {
+                // Não há nada para comprar (ou já comprou tudo)
+                Debug.Log($"[Bot {botTracker.name}] Não há mais upgrades disponíveis ou acessíveis.");
+                break;
+            }
+
+            // 2. Tenta comprar
+            if (botTracker.TryPurchaseUpgrade(bestUpgrade))
+            {
+                // Conseguiu!
+                Debug.Log($"[Bot {botTracker.name}] Comprou {bestUpgrade.upgradeName}!");
+                yield return new WaitForSecondsRealtime(botThinkTime); // Pensa...
+            }
+            else
+            {
+                // Falha (provavelmente não tem dinheiro suficiente para o mais barato)
+                // Vamos tentar um "reroll" se ele puder pagar.
+                if (botTracker.Wallet.SpendMoney(rerollCost))
+                {
+                     Debug.Log($"[Bot {botTracker.name}] Não gostou das opções, pagou {rerollCost} por um Reroll.");
+                     yield return new WaitForSecondsRealtime(botThinkTime); // Pensa...
+                     // O loop continua, e vai chamar ChooseBestUpgradeForBot() de novo
+                }
+                else
+                {
+                    // Não pode comprar o upgrade E não pode pagar o reroll. Desiste.
+                    Debug.Log($"[Bot {botTracker.name}] Sem dinheiro para mais upgrades ou reroll.");
+                    break;
+                }
+            }
+        }
+        
+        Debug.Log($"[Bot {botTracker.name}] Terminou de comprar.");
+    }
+    
+    /// <summary>
+    /// Lógica de decisão simples para o Bot.
+    /// </summary>
+    private UpgradeData ChooseBestUpgradeForBot(PlayerUpgradeTracker botTracker)
+    {
+        // 1. Pega todos os upgrades possíveis
+        List<UpgradeData> possibleUpgrades = new List<UpgradeData>(allUpgrades);
+
+        // 2. Filtra: Remove os que ele não pode pagar
+        // Usamos .ToList() para poder modificar a lista enquanto iteramos
+        foreach (var upgrade in possibleUpgrades.ToList())
+        {
+            int cost = botTracker.GetCurrentCost(upgrade);
+            if (cost > botTracker.Wallet.CurrentMoney)
+            {
+                possibleUpgrades.Remove(upgrade);
+            }
+            // TODO: Adicionar lógica para nível máximo (se existir)
+        }
+
+        // 3. Se sobraram opções, escolhe uma aleatoriamente
+        if (possibleUpgrades.Count > 0)
+        {
+            return possibleUpgrades[Random.Range(0, possibleUpgrades.Count)];
+        }
+
+        // 4. Não sobrou nada que ele possa pagar
+        return null; 
     }
 
-    // --- NOVO: MÉTODO PÚBLICO PARA O BOTÃO DE ATUALIZAR (REROLL) ---
+    /// <summary>
+    /// Botão Reroll (só para o Humano)
+    /// </summary>
     public void AtualizarOpcoes()
     {
-        // 1. Verifica se o jogador tem dinheiro para pagar o custo do reroll
-        if (playerWallet.SpendMoney(rerollCost))
+        if (localHumanPlayerTracker.Wallet.SpendMoney(rerollCost))
         {
-            // 2. Se sim, gasta o dinheiro e gera um novo conjunto de cartas
-            GerarNovasCartas();
-            
-            // Opcional: Tocar um som de "reroll" bem-sucedido
-            // AudioManager.Instance.PlaySFX("Shop_Reroll");
+            GerarNovasCartas(localHumanPlayerTracker);
         }
         else
         {
-            // 3. Se não, avisa o jogador (e talvez toque um som de falha)
             Debug.Log("Dinheiro insuficiente para atualizar a loja! Custo: " + rerollCost);
-            // AudioManager.Instance.PlaySFX("Purchase_Fail");
         }
     }
 
+    /// <summary>
+    /// Botão Comprar (só para o Humano)
+    /// </summary>
     public void PurchaseUpgrade(UpgradeData upgrade, UpgradeCardUI cardUI)
     {
-        int requiredCost = GetCurrentCost(upgrade); 
+        int requiredCost = localHumanPlayerTracker.GetCurrentCost(upgrade); 
 
-        if (playerWallet.SpendMoney(requiredCost))
+        if (localHumanPlayerTracker.TryPurchaseUpgrade(upgrade))
         {
-            ApplyUpgrade(upgrade);
             
-            int currentLevel = 0;
-            upgradeLevelsByAsset.TryGetValue(upgrade, out currentLevel); 
-            upgradeLevelsByAsset[upgrade] = currentLevel + 1;
-            
-            if (playerStatusUI != null)
-            {
-                playerStatusUI.UpdateDisplay();
-            }
-            
-            UpdateAllVisibleCardCosts(upgrade.type);
+            UpdateAllVisibleCardCosts(upgrade.type, localHumanPlayerTracker);
             
             Destroy(cardUI.gameObject);
         }
@@ -158,59 +233,39 @@ public class UpgradeManager : MonoBehaviour
         }
     }
     
-    public int GetCurrentCost(UpgradeData upgrade)
-    {
-        int currentLevel = 0;
-        upgradeLevelsByAsset.TryGetValue(upgrade, out currentLevel); 
-        float costMultiplier = 1f + (upgrade.priceIncreasePerLevel * currentLevel);
-        return Mathf.RoundToInt(upgrade.baseCost * costMultiplier);
-    }
+    // --- GetCurrentCost() REMOVIDO DAQUI ---
+    // (Agora está no PlayerUpgradeTracker)
 
-    // --- NOVO: MÉTODO PRIVADO QUE CONTÉM A LÓGICA DE GERAR CARTAS ---
-    // Isto é chamado tanto por ShowUpgradeScreen() quanto por AtualizarOpcoes()
-    private void GerarNovasCartas()
+    /// <summary>
+    /// Gera as cartas de UI para um tracker específico (o do humano).
+    /// </summary>
+    private void GerarNovasCartas(PlayerUpgradeTracker tracker)
     {
-        // 1. Limpa todas as cartas que já estão no container
         foreach (Transform child in cardContainer)
         {
             Destroy(child.gameObject);
         }
 
-        // 2. Cria um "pool" de onde escolher os upgrades
         List<UpgradeData> upgradesPool = new List<UpgradeData>(allUpgrades);
-        if (upgradesPool.Count == 0)
-        {
-            Debug.LogWarning("A lista 'allUpgrades' está vazia. Não há upgrades para mostrar.");
-            return;
-        }
+        if (upgradesPool.Count == 0) return;
 
-        // 3. Escolhe os upgrades
         List<UpgradeData> chosenUpgrades = new List<UpgradeData>();
         for (int i = 0; i < optionsToShow; i++)
         {
             if (upgradesPool.Count > 0)
             {
-                // Escolhe um upgrade aleatório
                 int index = Random.Range(0, upgradesPool.Count);
                 UpgradeData randomUpgrade = upgradesPool[index];
-                
                 chosenUpgrades.Add(randomUpgrade);
-                
-                // IMPORTANTE: Remove o upgrade escolhido do pool
-                // Isso impede que o *mesmo* upgrade apareça duas vezes na *mesma* tela
                 upgradesPool.RemoveAt(index); 
             }
-            else
-            {
-                // Para o loop se o pool acabar (ex: só tem 2 upgrades e optionsToShow é 4)
-                break;
-            }
+            else break;
         }
 
-        // 4. Instancia as cartas na UI
         foreach (var upgrade in chosenUpgrades)
         {
-            int dynamicCost = GetCurrentCost(upgrade);
+            // Pega o custo individual do tracker humano
+            int dynamicCost = tracker.GetCurrentCost(upgrade);
             GameObject cardInstance = Instantiate(upgradeCardPrefab, cardContainer);
             UpgradeCardUI cardUI = cardInstance.GetComponent<UpgradeCardUI>();
             if (cardUI != null)
@@ -220,45 +275,8 @@ public class UpgradeManager : MonoBehaviour
         }
     }
 
-    private void ApplyUpgrade(UpgradeData upgrade)
-    {
-        if (playerHealthSystem == null || playerController == null || playerWeaponManager == null)
-        {
-            Debug.LogError("Referências de Player/Health/Weapons incompletas no UpgradeManager!");
-            return;
-        }
-
-        switch (upgrade.type)
-        {
-            case UpgradeType.AddNewWeapon:
-                if (upgrade.weaponPrefab != null) { playerWeaponManager.AddWeapon(upgrade.weaponPrefab); }
-                break;
-            case UpgradeType.IncreaseMoveSpeed:
-                playerController.IncreaseSpeedMultiplier(upgrade.value);
-                break;
-            case UpgradeType.IncreaseHealth:
-                playerHealthSystem.IncreaseMaxHealth(upgrade.value);
-                break;
-            case UpgradeType.IncreaseDamage:
-                playerWeaponManager.IncreaseDamage(upgrade.value);
-                break;
-            case UpgradeType.IncreaseRegen:
-                playerHealthSystem.IncreaseRegenRate(upgrade.value);
-                break;
-            case UpgradeType.IncreaseFireRate:
-                playerWeaponManager.IncreaseFireRateMultiplier(upgrade.value);
-                break;
-            case UpgradeType.IncreaseRange:
-                playerWeaponManager.IncreaseRangeMultiplier(upgrade.value);
-                break;
-            case UpgradeType.IncreaseInvulnerabilityTime:
-                playerHealthSystem.IncreaseInvulnerabilityTime(upgrade.value);
-                break;
-            default:
-                Debug.LogWarning("Tipo de Upgrade não implementado: " + upgrade.type);
-                break;
-        }
-    }
+    // --- ApplyUpgrade() REMOVIDO DAQUI ---
+    // (Agora está no PlayerUpgradeTracker)
     
     public void CloseShop()
     {
@@ -276,14 +294,17 @@ public class UpgradeManager : MonoBehaviour
         OnShopClosed?.Invoke();
     }
 
-    private void UpdateAllVisibleCardCosts(UpgradeType purchasedType)
+    /// <summary>
+    /// Atualiza o custo visual das cartas na loja do humano.
+    /// </summary>
+    private void UpdateAllVisibleCardCosts(UpgradeType purchasedType, PlayerUpgradeTracker tracker)
     {
         UpgradeCardUI[] activeCards = cardContainer.GetComponentsInChildren<UpgradeCardUI>();
         foreach (UpgradeCardUI card in activeCards)
         {
             if (card.CurrentUpgrade != null && card.CurrentUpgrade.type == purchasedType)
             {
-                int newCost = GetCurrentCost(card.CurrentUpgrade);
+                int newCost = tracker.GetCurrentCost(card.CurrentUpgrade);
                 card.UpdateCostDisplay(newCost);
             }
         }

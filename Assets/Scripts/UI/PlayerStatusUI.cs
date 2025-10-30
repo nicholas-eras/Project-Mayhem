@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Collections.Generic; // Necessário para List<>
+using System.Collections.Generic;
 
 public class PlayerStatusUI : MonoBehaviour
 {
@@ -17,47 +17,100 @@ public class PlayerStatusUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI fireRateText;
     [SerializeField] private TextMeshProUGUI rangeText;
 
-    // --- MUDANÇA: Referências para o "Preview" das Armas ---
     [Header("Referências do Preview de Armas")]
-    [Tooltip("O 'holder' (GameObject) centrado sobre a imagem do player onde os ícones das armas irão girar.")]
-    [SerializeField] private Transform weaponPreviewHolder; // <-- MUDOU O NOME E A FUNÇÃO
-    [Tooltip("O prefab de UI (uma simples 'Image') para instanciar como ícone.")]
+    [SerializeField] private Transform weaponPreviewHolder;
     [SerializeField] private GameObject weaponIconPrefab;
-    [Tooltip("O raio em pixels para posicionar os ícones de arma na UI.")]
-    [SerializeField] private float uiWeaponRadius = 100f; // <-- NOVO CAMPO
-    [Tooltip("O tamanho (Largura e Altura) para forçar nos ícones da UI.")]
+    [SerializeField] private float uiWeaponRadius = 100f;
     [SerializeField] private Vector2 uiIconSize = new Vector2(16, 16);
-    // --------------------------------------------------
 
-
-    // Referências dos Managers
+    // --- Referências locais ---
+    private AgentManager targetAgent;
     private PlayerController playerController;
     private HealthSystem healthSystem;
     private PlayerWeaponManager weaponManager;
+    private SpriteRenderer playerRenderer; // <-- NOVA VARIÁVEL
 
-    public void Setup(PlayerController pc, HealthSystem hs, PlayerWeaponManager pwm)
+    /// <summary>
+    /// Configuração inicial chamada pelo TeamStatusUIManager
+    /// </summary>
+    public void Setup(AgentManager agent)
     {
-        playerController = pc;
-        healthSystem = hs;
-        weaponManager = pwm;
-
-        SpriteRenderer playerRenderer = pc.GetComponentInChildren<SpriteRenderer>(); 
-        if (playerRenderer != null && playerSpriteImage != null)
+        if (agent == null)
         {
-            if (playerRenderer.sprite != null)
-            {
-                playerSpriteImage.sprite = playerRenderer.sprite;
-            }
+            Debug.LogError("PlayerStatusUI: Setup falhou, Agent está nulo!");
+            Destroy(gameObject);
+            return;
         }
 
+        // 1. Guarda as referências dos componentes
+        targetAgent = agent;
+        playerController = targetAgent.GetComponent<PlayerController>();
+        healthSystem = targetAgent.GetComponent<HealthSystem>();
+        weaponManager = targetAgent.GetComponent<PlayerWeaponManager>();
+
+        // 2. GUARDA O RENDERER (mas não o sprite ainda)
+        playerRenderer = targetAgent.GetComponentInChildren<SpriteRenderer>(); 
+
+        if (playerController == null || healthSystem == null || weaponManager == null || playerRenderer == null)
+        {
+             Debug.LogError($"PlayerStatusUI: Falha ao obter componentes do Agente {agent.name}!");
+             Destroy(gameObject);
+             return;
+        }
+
+        // 3. LÓGICA DO SPRITE REMOVIDA DAQUI
+        // (Será movida para o UpdateDisplay)
+
+        // 4. Faz a primeira atualização
         UpdateDisplay();
     }
 
+    /// <summary>
+    /// Auto-atualiza o painel e auto-destrói-se
+    /// </summary>
+    void LateUpdate()
+    {
+        if (targetAgent == null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        // Atualiza a UI em tempo real
+        UpdateDisplay();
+    }
+
+    /// <summary>
+    /// Atualiza todos os campos de texto, ícones de armas E O SPRITE DO JOGADOR
+    /// </summary>
     public void UpdateDisplay()
     {
+        // --- LÓGICA DO SPRITE MOVIDA PARA AQUI ---
+        // 0. ATUALIZA O SPRITE DO JOGADOR
+        if (playerRenderer != null && playerSpriteImage != null)
+        {
+            // Se o sprite no renderer for válido E for diferente do que estamos a mostrar...
+            if (playerRenderer.sprite != null && playerSpriteImage.sprite != playerRenderer.sprite)
+            {
+                // ...atualiza a UI.
+                playerSpriteImage.sprite = playerRenderer.sprite;
+                playerSpriteImage.color = Color.white;
+                playerSpriteImage.preserveAspect = true;
+            }
+            // Se o sprite no renderer for nulo (ex: ainda não carregou)...
+            else if (playerRenderer.sprite == null)
+            {
+                // ...mostra o fallback (transparente).
+                playerSpriteImage.sprite = null;
+                playerSpriteImage.color = new Color(0, 0, 0, 0);
+            }
+        }
+        // --- FIM DA LÓGICA DO SPRITE ---
+
         // 1. STATS DE DEFESA (HealthSystem)
         if (healthSystem != null)
         {
+            // ... (o seu código original de stats)
             if (healthMaxText != null) healthMaxText.text = $"VIDA MÁX: {healthSystem.MaxHealth.ToString("F0")}";
             if (regenRateText != null) regenRateText.text = $"REGEN: +{healthSystem.regenRate.ToString("F1")}/s";
             if (invulnTimeText != null) invulnTimeText.text = $"INVULN: {healthSystem.damageCooldown.ToString("F2")}s";
@@ -72,6 +125,7 @@ public class PlayerStatusUI : MonoBehaviour
         // 3. STATS DE ARMAS (Textos da Arma Principal)
         if (weaponManager != null)
         {
+            // ... (o seu código original de stats de armas)
             GameObject mainWeaponGO = weaponManager.GetEquippedWeapon(0);
             WeaponController mainWeapon = (mainWeaponGO != null) ? mainWeaponGO.GetComponent<WeaponController>() : null;
 
@@ -92,8 +146,10 @@ public class PlayerStatusUI : MonoBehaviour
         // 4. ATUALIZA O VISUAL DAS ARMAS
         UpdateWeaponIcons();
     }
-
-    // --- MÉTODO 'UpdateWeaponIcons' ATUALIZADO ---
+    
+    /// <summary>
+    /// Atualiza os ícones de armas que giram à volta do jogador
+    /// </summary>
     private void UpdateWeaponIcons()
     {
         // 1. Verifica se as referências necessárias existem
@@ -132,22 +188,17 @@ public class PlayerStatusUI : MonoBehaviour
             // Cria a instância do prefab
             GameObject iconInstance = Instantiate(weaponIconPrefab, weaponPreviewHolder);
 
-            // --- INÍCIO DAS NOVAS LINHAS ---
-
             // Pega o RectTransform
             RectTransform iconRect = iconInstance.GetComponent<RectTransform>();
             if (iconRect == null) continue; // Segurança
 
             // FORÇA as âncoras e pivô para o centro (Ignora o prefab)
-            // Isso garante que o 'anchoredPosition' funcione corretamente
             iconRect.anchorMin = new Vector2(0.5f, 0.5f);
             iconRect.anchorMax = new Vector2(0.5f, 0.5f);
             iconRect.pivot = new Vector2(0.5f, 0.5f);
 
-            // FORÇA o tamanho (sizeDelta) para o nosso novo campo (ex: 64x64)
+            // FORÇA o tamanho (sizeDelta)
             iconRect.sizeDelta = uiIconSize;
-
-            // --- FIM DAS NOVAS LINHAS ---
 
             // Define a Posição Local
             iconRect.anchoredPosition = weaponPosition;
@@ -157,12 +208,8 @@ public class PlayerStatusUI : MonoBehaviour
             if (iconImage != null)
             {
                 iconImage.sprite = icon;
-
-                // --- BÔNUS: Força o 'Preserve Aspect' em código ---
-                // Isso garante que a arma não fique esticada, mesmo se o prefab não tiver isso
                 iconImage.preserveAspect = true;
             }
         }
     }
-    
 }
