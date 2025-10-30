@@ -175,7 +175,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 3
-  collisionDamage: 10
+  collisionDamage: 5
   stopDistance: 0
   damageType: 0
   isBoss: 0
