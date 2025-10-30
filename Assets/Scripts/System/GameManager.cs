@@ -6,7 +6,7 @@ using Unity.Netcode; // Necessário para a lógica de rede (Host/Client)
 /// <summary>
 /// Gerenciador principal do estado do jogo. Controla o fluxo de Game Over,
 /// Vitória, reinício de fase/onda e transições de cena.
-/// É um Singleton que persiste entre as cenas.
+/// É um Singleton que persiste entre as cenas (DontDestroyOnLoad).
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -16,16 +16,19 @@ public class GameManager : MonoBehaviour
     [Tooltip("O nome exato da sua cena de seleção de mapas/lobby.")]
     [SerializeField] private string mapSelectSceneName = "MapSelectScene";
 
-    [Header("UI de Fim de Jogo (Opcional)")]
-    [Tooltip("O painel principal que é ativado no Game Over (Pode ser nulo).")]
-    [SerializeField] private GameObject gameOverPanel;
-    [Tooltip("O GameObject do botão 'Tentar Novamente' (DEVE ser filho do gameOverPanel, pode ser nulo).")]
-    [SerializeField] private GameObject retryButton;
+    // --- Variáveis de UI ---
+    // Estas referências são procuradas e preenchidas automaticamente
+    // pela lógica OnSceneLoaded() quando uma cena de jogo carrega.
+    private GameObject gameOverPanel;
+    private GameObject retryButton;
 
-    private bool isGameOver = false; // Flag interna para evitar múltiplas chamadas
+    // --- Memória Persistente do Lobby ---
     public SlotState[] LastLobbySlotStates { get; set; } = null;
     public int[] LastLobbySkinIDs { get; set; } = null;
     public ulong[] LastLobbyClientIds { get; set; } = null;
+
+    private bool isGameOver = false; // Flag interna para evitar múltiplas chamadas
+
     
     void Awake()
     {
@@ -41,35 +44,117 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // --- LÓGICA DE PROCURA DE UI (NOVA) ---
+
+    /// <summary>
+    /// Subscreve ao evento de cenas carregadas quando o GameManager é ativado.
+    /// </summary>
+    void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    /// <summary>
+    /// Limpa a subscrição quando o GameManager é desativado.
+    /// </summary>
+    void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    /// <summary>
+    /// Chamado automaticamente pelo Unity sempre que uma nova cena termina de carregar.
+    /// </summary>
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Se voltámos ao menu, limpa as referências da UI do jogo.
+        if (scene.name == mapSelectSceneName)
+        {
+            gameOverPanel = null;
+            retryButton = null;
+            isGameOver = false; // Garante que o estado de G.O. é resetado
+        }
+        else // Se carregámos QUALQUER outra cena (Jungle, Cyberpunk, etc.)
+        {
+            // Procura o painel de Game Over nessa nova cena.
+            FindAndAssignGameOverPanel(scene);
+        }
+    }
+
+    // Em GameManager.cs
+
+    /// <summary>
+    /// Procura o painel de Game Over e o botão de Retry na cena atual, USANDO TAGS.
+    /// </summary>
+    private void FindAndAssignGameOverPanel(Scene scene)
+    {
+        // !! IMPORTANTE !!
+        // Garanta que criou esta Tag e a atribuiu nos seus prefabs de UI
+        string panelTag = "GameOverPanel";
+
+        // Nomes dos botões (isto ainda é por nome, o que é OK se forem filhos)
+        string retryButtonName = "RetryButton";
+
+        // Usamos Resources.FindObjectsOfTypeAll para encontrar objetos INATIVOS
+        var allTransforms = Resources.FindObjectsOfTypeAll<RectTransform>();
+        foreach (var t in allTransforms)
+        {
+            // Verifica se está na cena E tem a Tag correta
+            if (t.gameObject.scene.name == scene.name && t.CompareTag(panelTag))
+            {
+                gameOverPanel = t.gameObject;
+                Debug.Log($"[GameManager] Painel com Tag '{panelTag}' encontrado na cena '{scene.name}'.");
+
+                // Procura o botão de retry DENTRO do painel
+                Transform retryBtnTransform = gameOverPanel.transform.Find(retryButtonName);
+                if (retryBtnTransform != null)
+                {
+                    retryButton = retryBtnTransform.gameObject;
+                }
+                else
+                {
+                    Debug.LogWarning($"[GameManager] Encontrou o painel, mas não o botão '{retryButtonName}' lá dentro.");
+                }
+
+                gameOverPanel.SetActive(false);
+                return; // Encontrámos!
+            }
+        }
+
+        // Se o loop terminar e não encontrámos...
+        Debug.LogWarning($"[GameManager] Carreguei '{scene.name}' mas não encontrei NENHUM objeto com Tag '{panelTag}'. O fallback de delay será usado.");
+        gameOverPanel = null;
+    }
+    
+    // --- LÓGICA DE ESTADO DE JOGO (GAME OVER / VITÓRIA) ---
+
     /// <summary>
     /// Chamado EXCLUSIVAMENTE pelo PlayerManager quando o último jogador/bot morre.
-    /// Decide se a opção de Tentar Novamente deve ser mostrada.
     /// </summary>
     public void TriggerGameOverFromPlayerManager()
     {
-        if (isGameOver) return; // Se já estamos em Game Over, não faz nada
+        if (isGameOver) return; 
         isGameOver = true;
-
-        // 1. Pausa o jogo (usando tempo real para WaitForSecondsRealtime funcionar)
         Time.timeScale = 0f;
 
-        // 2. Verifica se a onda que acabou era uma "Greater Boss Wave"
-        WaveManager waveManager = FindObjectOfType<WaveManager>(); // Encontra o WaveManager na cena atual
+        // Verifica se a onda era um "Greater Boss Wave"
+        WaveManager waveManager = FindObjectOfType<WaveManager>();
         bool allowRetry = (waveManager != null && waveManager.IsCurrentWaveGreaterBoss);
 
-        // 3. Ativa a UI de Game Over e configura o botão Retry
+        // Ativa a UI (se a encontrou na cena)
         if (gameOverPanel != null)
         {
-            gameOverPanel.SetActive(true); // Mostra o painel principal
+            gameOverPanel.SetActive(true); 
             if (retryButton != null)
             {
-                retryButton.SetActive(allowRetry); // Mostra ou esconde o botão "Tentar Novamente"
+                retryButton.SetActive(allowRetry); 
             }
         }
         else
         {
-            // Fallback: Se não há painel de UI, apenas volta ao menu após um delay
-            StartCoroutine(LoadMapSelectAfterDelay(3.0f));
+            // Fallback: Se não encontrou o painel, volta ao menu após um delay
+            Debug.Log("[GameManager] gameOverPanel é nulo. A usar fallback de delay.");
+            StartCoroutine(LoadMapSelectAfterDelay(2.0f)); // <-- Pode ajustar este delay
         }
     }
 
@@ -78,9 +163,9 @@ public class GameManager : MonoBehaviour
      /// </summary>
     public void TriggerVictory()
     {
-        if (isGameOver) return; // Não pode vencer se já perdeu
+        if (isGameOver) return;
         isGameOver = true;
-        Time.timeScale = 0f; // Pausa o jogo
+        Time.timeScale = 0f; 
 
         // TODO: Mostrar um painel de Vitória?
 
@@ -96,141 +181,64 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void OnButtonQuitToMenu()
     {
-        // Se estamos em rede e somos um Cliente, apenas nos desconectamos
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.IsHost)
-        {
-            Debug.Log("[GameManager] Cliente clicou em Sair. Desconectando.");
-            // O Cliente se desconecta e carrega o menu localmente
-            // A lógica em CleanupAndLoadScene(mapSelectSceneName) já cuida disso.
-            CleanupAndLoadScene(mapSelectSceneName);
-        }
-        else
-        {
-            // Se somos o Host (ou estamos offline),
-            // carregamos a cena (o Host levará todos junto)
-            CleanupAndLoadScene(mapSelectSceneName);
-        }
+        // Se somos o Host (ou offline), carregamos a cena
+        // (o Host levará todos junto)
+        CleanupAndLoadScene(mapSelectSceneName);
     }
-
-    // Em GameManager.cs
-
-    /// <summary>
-    /// Função centralizada para lidar com o carregamento de cenas,
-    /// considerando se estamos offline, Host ou Cliente.
-    /// </summary>
-    private void CleanupAndLoadScene(string sceneName)
-    {
-        // Restaura o estado do jogo antes de mudar de cena
-        Time.timeScale = 1.0f;
-        isGameOver = false;
-        if (gameOverPanel != null) gameOverPanel.SetActive(false); // Garante que a UI suma
-
-        // Verifica o estado da rede
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
-        {
-            // Estamos numa sessão de rede ativa
-            if (NetworkManager.Singleton.IsHost)
-            {
-                // --- ESTA É A LÓGICA CORRETA PARA O HOST ---
-                // O Host NUNCA se desliga.
-                // Ele apenas usa o SceneManager da rede para forçar
-                // TODOS (ele mesmo e os clientes) a carregar a nova cena.
-                Debug.Log($"[GameManager] Host a carregar a cena '{sceneName}' para todos.");
-                NetworkManager.Singleton.SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
-            }
-            else if (NetworkManager.Singleton.IsClient)
-            {
-                // CLIENTE:
-                // Se o cliente está a voltar ao menu (provavelmente clicou em "Sair"),
-                // ele DEVE desligar-se.
-                if (sceneName == mapSelectSceneName)
-                {
-                    Debug.Log("[GameManager] Cliente a voltar ao menu. A desligar (Shutdown).");
-                    NetworkManager.Singleton.Shutdown(); // Cliente desconecta-se
-                    StartCoroutine(LoadSceneLocalAfterShutdown(sceneName));
-                }
-                else
-                {
-                    // Cliente nunca deve tentar carregar outra cena
-                    Debug.LogWarning($"[GameManager - Cliente] Tentativa de carregar cena '{sceneName}' ignorada.");
-                }
-            }
-        }
-        else // Modo Offline (Single Player)
-        {
-            // Usa o SceneManager normal do Unity
-            if (CanLoadScene(sceneName))
-            {
-                SceneManager.LoadScene(sceneName);
-            }
-        }
-    }    
 
     /// <summary>
     /// Chamado pelo botão "Reiniciar Fase". Recarrega a cena atual do zero.
-    /// Apenas o Host pode executar esta ação em um jogo de rede.
     /// </summary>
     public void OnButtonRestartScene()
     {
-        // Em rede, apenas o Host pode reiniciar a cena para todos
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.IsHost)
         {
             Debug.LogWarning("Cliente tentou reiniciar a cena. Apenas o Host pode fazer isso.");
-            return; // Clientes não fazem nada
+            return;
         }
         CleanupAndLoadScene(SceneManager.GetActiveScene().name);
     }
 
     /// <summary>
     /// Chamado pelo botão "Tentar Novamente". Reinicia apenas a wave atual.
-    /// Apenas o Host pode executar esta ação em um jogo de rede.
     /// </summary>
     public void OnButtonRetryWave()
     {
-        // Em rede, apenas o Host pode reiniciar a wave
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.IsHost)
         {
-             Debug.LogWarning("Cliente tentou dar Retry na wave. Apenas o Host pode fazer isso.");
-             return; // Clientes não fazem nada
+            Debug.LogWarning("Cliente tentou dar Retry na wave. Apenas o Host pode fazer isso.");
+            return; 
         }
 
-
-        // Encontra os managers necessários na cena atual
         WaveManager waveManager = FindObjectOfType<WaveManager>();
-        // PlayerManager playerManager = PlayerManager.Instance; // Usando Singleton se disponível
 
-        if (waveManager != null /*&& playerManager != null*/) // Verifica se encontrou o WaveManager
+        if (waveManager != null)
         {
-            // Esconde o painel de Game Over e restaura o estado do jogo
+            // Esconde o painel e restaura o estado do jogo
             if (gameOverPanel != null) gameOverPanel.SetActive(false);
-            isGameOver = false; // Permite que o jogo continue
-            Time.timeScale = 1.0f; // Despausa o jogo
+            isGameOver = false; 
+            Time.timeScale = 1.0f; 
 
-            // "Revive" todos os jogadores/bots
-            // A forma mais segura é iterar pelos HealthSystems registrados no PlayerManager,
-            // mas FindObjectsOfType é um fallback funcional (especialmente no Host).
-            PlayerTargetable[] playersToReset = FindObjectsOfType<PlayerTargetable>(true); // 'true' para incluir inativos
+            // "Revive" todos
+            PlayerTargetable[] playersToReset = FindObjectsOfType<PlayerTargetable>(true);
             foreach(var playerTarget in playersToReset)
             {
-                 // Reativa o GameObject caso o Die() o tenha desativado
-                 if (!playerTarget.gameObject.activeSelf)
-                 {
-                     playerTarget.gameObject.SetActive(true);
-                 }
-                 HealthSystem hs = playerTarget.GetComponent<HealthSystem>();
-                 if (hs != null)
-                 {
-                     hs.ResetForRetry(); // Chama a função de "reviver"
-                 }
+                if (!playerTarget.gameObject.activeSelf)
+                {
+                    playerTarget.gameObject.SetActive(true);
+                }
+                HealthSystem hs = playerTarget.GetComponent<HealthSystem>();
+                if (hs != null)
+                {
+                    hs.ResetForRetry(); 
+                }
             }
-
-            // Manda o WaveManager reiniciar a wave atual
+            
             waveManager.RetryCurrentWave();
         }
         else
         {
-            Debug.LogError("[GameManager] Não foi possível Tentar Novamente. WaveManager não encontrado! Reiniciando a cena como fallback...");
-            // Se algo deu muito errado, apenas reinicia a cena inteira.
+            Debug.LogError("[GameManager] Não foi possível Tentar Novamente. WaveManager não encontrado! Reiniciando a cena...");
             OnButtonRestartScene();
         }
     }
@@ -242,20 +250,60 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private IEnumerator LoadMapSelectAfterDelay(float delay)
     {
-        yield return new WaitForSecondsRealtime(delay); // Espera mesmo com Time.timeScale = 0
+        yield return new WaitForSecondsRealtime(delay); 
         CleanupAndLoadScene(mapSelectSceneName);
     }
+
+    /// <summary>
+    /// Função centralizada para lidar com o carregamento de cenas.
+    /// </summary>
+    private void CleanupAndLoadScene(string sceneName)
+    {
+        Time.timeScale = 1.0f;
+        isGameOver = false;
+        if (gameOverPanel != null) gameOverPanel.SetActive(false);
+
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+        {
+            if (NetworkManager.Singleton.IsHost)
+            {
+                // Host usa o SceneManager da rede para carregar a cena para todos.
+                Debug.Log($"[GameManager] Host a carregar a cena '{sceneName}' para todos.");
+                NetworkManager.Singleton.SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
+            }
+            else if (NetworkManager.Singleton.IsClient)
+            {
+                // Cliente só pode voltar ao menu, o que o desconecta.
+                if (sceneName == mapSelectSceneName)
+                {
+                    Debug.Log("[GameManager] Cliente a voltar ao menu. A desligar (Shutdown).");
+                    NetworkManager.Singleton.Shutdown(); 
+                    StartCoroutine(LoadSceneLocalAfterShutdown(sceneName));
+                }
+                else
+                {
+                    Debug.LogWarning($"[GameManager - Cliente] Tentativa de carregar cena '{sceneName}' ignorada.");
+                }
+            }
+        }
+        else // Modo Offline
+        {
+            if (CanLoadScene(sceneName))
+            {
+                SceneManager.LoadScene(sceneName);
+            }
+        }
+    }   
 
     /// <summary>
     /// Corrotina auxiliar para garantir que a cena local seja carregada após o Shutdown do cliente.
     /// </summary>
     private IEnumerator LoadSceneLocalAfterShutdown(string sceneName)
     {
-        // Espera um pequeno tempo para o Shutdown processar
         yield return new WaitForSecondsRealtime(0.1f);
         if (CanLoadScene(sceneName))
         {
-             SceneManager.LoadScene(sceneName);
+            SceneManager.LoadScene(sceneName);
         }
     }
 
@@ -264,15 +312,11 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private bool CanLoadScene(string sceneName)
     {
-         // Application.CanStreamedLevelBeLoaded foi descontinuado.
-         // A forma correta é tentar carregar e capturar a exceção,
-         // ou verificar se o índice da cena é válido.
-         // Solução simples: Apenas logar erro se falhar.
-         if (SceneUtility.GetBuildIndexByScenePath(sceneName) < 0 && SceneManager.GetSceneByName(sceneName).buildIndex < 0)
-         {
-              Debug.LogError($"[GameManager] FALHA AO CARREGAR: A cena '{sceneName}' não está nas Build Settings ou o nome está incorreto!");
-              return false;
-         }
-         return true;
+       if (SceneUtility.GetBuildIndexByScenePath(sceneName) < 0 && SceneManager.GetSceneByName(sceneName).buildIndex < 0)
+       {
+           Debug.LogError($"[GameManager] FALHA AO CARREGAR: A cena '{sceneName}' não está nas Build Settings ou o nome está incorreto!");
+           return false;
+       }
+       return true;
     }
 }

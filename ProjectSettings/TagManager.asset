@@ -8,6 +8,7 @@ TagManager:
   - EnemyProjectile
   - Scenary
   - Bot
+  - GameOverPanel
   layers:
   - Default
   - TransparentFX
