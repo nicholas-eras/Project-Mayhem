@@ -5,7 +5,7 @@ using UnityEngine;
 public class ShieldRotator : MonoBehaviour
 {
     // A rotação angular que o padrão irá acumular (graus por segundo)
-    [SerializeField] private float rotationSpeed = 100f;
+    [SerializeField] public float rotationSpeed = 100f;
 
     void Update()
     {

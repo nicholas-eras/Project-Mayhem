@@ -1,6 +1,7 @@
 using UnityEngine;
+using Unity.Netcode; 
 
-public class EnemyShooter : MonoBehaviour
+public class EnemyShooter : NetworkBehaviour
 {
     [Header("Configurações de Disparo")]
     [Tooltip("O prefab do projétil (deve conter o script Projectile).")]
@@ -22,13 +23,34 @@ public class EnemyShooter : MonoBehaviour
     [Header("Alcance e Cadência")]
     [Tooltip("O tempo mínimo, em segundos, entre cada tiro.")]
     [SerializeField] public float fireRateInterval = 1f;
-    
+
     [Tooltip("A distância máxima do jogador para que o inimigo comece a atirar (Shoot Distance).")]
     [SerializeField] public float shootingRange = 10f;
-
+    
+    private bool isNetworkReady = false;
     public Transform playerTarget;
     private float nextFireTime;
     private PatternShooter patternShooter; 
+
+    // --- NOVO MÉTODO ---
+    // Este método só é chamado quando o Netcode confirma
+    // que este objeto (e os seus filhos, como o FirePoint)
+    // estão prontos na rede.
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        // Apenas o Host/Servidor deve controlar a IA e disparar
+        if (IsServer)
+        {
+            isNetworkReady = true;
+        }
+        else
+        {
+            // Se for um cliente, desativa este script.
+            // O cliente só precisa de ver o boss a mover-se (NetworkTransform).
+            this.enabled = false;
+        }
+    }
 
     void Awake()
     {
@@ -49,6 +71,11 @@ public class EnemyShooter : MonoBehaviour
     
     void Update()
     {
+        if (!isNetworkReady)
+        {
+            return;
+        }
+
         if (playerTarget == null || firePoint == null || projectilePrefab == null)
         {
             return;

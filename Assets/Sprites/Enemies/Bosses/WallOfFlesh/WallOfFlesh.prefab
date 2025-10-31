@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 6621008751492439942}
   m_Layer: 0
   m_Name: WallOfFlesh
-  m_TagString: Untagged
+  m_TagString: GreaterBoss
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

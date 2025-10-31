@@ -17,7 +17,7 @@ public enum ShootingPattern
     Random_Selection
 }
 
-public class PatternShooter : MonoBehaviour
+public class PatternShooter : NetworkBehaviour
 {
     [Header("1. Seleção e Controle")]
     [Tooltip("O padrão de tiro a ser usado (ou Random_Selection).")]
@@ -261,9 +261,7 @@ public class PatternShooter : MonoBehaviour
     private void ShootRotatingCrossColumn()
     {
         if (shieldIsActive)
-        {
             return;
-        }
 
         if (shieldRotationParent == null)
         {
@@ -282,7 +280,6 @@ public class PatternShooter : MonoBehaviour
 
             for (int i = 1; i < totalProjectilesInColumn; i++)
             {
-
                 float currentOffset = i * columnSpacing;
                 Vector3 spawnPosition = bossCenter + (perpendicularDirection * currentOffset);
 
@@ -296,39 +293,31 @@ public class PatternShooter : MonoBehaviour
 
                 if (shieldGO != null)
                 {
-                    // 1. Pegue o NetworkObject do escudo
                     NetworkObject netObj = shieldGO.GetComponent<NetworkObject>();
-
-                    // 2. Spawne o objeto na rede PRIMEIRO
-                    if (netObj != null)
-                    {
+                    if (IsServer && netObj != null && !netObj.IsSpawned)
                         netObj.Spawn();
-                    }
-                    else
-                    {
-                        Debug.LogError("O prefab do escudo (shieldGO) não tem um NetworkObject!");
-                    }
 
-                    // 3. AGORA é seguro definir o parent
-                    shieldGO.transform.SetParent(shieldRotationParent);
+                    // Agora apenas orbitam o centro controlado pelo ShieldRotator
+                    var orbit = shieldGO.AddComponent<OrbitAround>();
+                    orbit.center = shieldRotationParent;
 
                     activeShieldProjectiles.Add(shieldGO);
                 }
             }
         }
-        
+
         shieldIsActive = true;
     }
 
     public void ClearActiveShield()
     {
         if (!shieldIsActive && activeShieldProjectiles.Count == 0) return;
-                
+
         foreach (GameObject proj in activeShieldProjectiles)
         {
             if (proj != null) Destroy(proj);
         }
-        
+
         activeShieldProjectiles.Clear();
         shieldIsActive = false;
     }

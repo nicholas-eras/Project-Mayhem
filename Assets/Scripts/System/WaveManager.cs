@@ -48,6 +48,8 @@ public class WaveManager : MonoBehaviour
 
     [Header("Referências")]
     [SerializeField] private Transform[] spawnPoints;
+    [Tooltip("Arraste o GameObject da UI de vida do Greater Boss aqui.")]
+    [SerializeField] private GameObject bossHealthUI;
 
     [Header("Configuração de Coleta")]
     [SerializeField] private float coinCollectionTime = 1.5f;
@@ -61,9 +63,10 @@ public class WaveManager : MonoBehaviour
     private Vector3 playerStandardSpawnPosition = Vector3.zero;
     private Vector3 playerBossSpawnPosition = Vector3.zero;
     private GameObject currentBossInstance = null;
-    private bool playersReady = false; // *** NOVO: Flag para controlar se jogadores estão prontos ***
-    private GameSceneManager gameSceneManager; // <-- ADICIONE ESTA LINHA
+    private GameSceneManager gameSceneManager; 
+    private BossUIHealth bossUIHealthScript; // <-- Referência direta para o script da UI
 
+    
     void Start()
     {
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.IsServer)
@@ -80,40 +83,18 @@ public class WaveManager : MonoBehaviour
         if (UpgradeManager.Instance == null)
             Debug.LogError("WaveManager: UpgradeManager não encontrado na cena!");
 
-        // *** NOVA LÓGICA: Se inscreve no evento e espera ***
-        // if (GameSceneManager.OnAllPlayersSpawned != null)
-        // {
-        //     GameSceneManager.OnAllPlayersSpawned += OnPlayersSpawned;
-        // }
-        // else
-        // {
-        //     // Fallback: se o evento não existir, espera um tempo e inicia
-        //     // StartCoroutine(DelayedStart());
-        //     playersReady = true;
-        //     HandleShopClosed();
-        // }
+        // --- ADICIONADO: Encontra a referência do script da UI ---
+        if (bossHealthUI != null)
+        {
+            bossUIHealthScript = bossHealthUI.GetComponent<BossUIHealth>();
+            if (bossUIHealthScript == null)
+            {
+                Debug.LogError("[WaveManager] O GameObject 'Boss Health UI' foi arrastado, mas falta o script 'BossUIHealth.cs' nele!");
+            }
+        }
+        
         HandleShopClosed();
     }
-
-    // *** NOVO: Método chamado quando todos os jogadores foram spawnados ***
-    // private void OnPlayersSpawned()
-    // {
-    //     playersReady = true;
-        
-    //     // Remove a inscrição do evento
-    //     GameSceneManager.OnAllPlayersSpawned -= OnPlayersSpawned;
-        
-    //     // Inicia as ondas
-    //     HandleShopClosed();
-    // }
-
-    // // *** NOVO: Fallback caso o evento não funcione ***
-    // private IEnumerator DelayedStart()
-    // {
-    //     yield return new WaitForSeconds(.1f);
-    //     playersReady = true;
-    //     HandleShopClosed();
-    // }
 
     private void FindAndSetPlayerSpawnPoints()
     {
@@ -158,23 +139,24 @@ public class WaveManager : MonoBehaviour
         {
             UpgradeManager.Instance.OnShopClosed -= HandleShopClosed;
         }
-        
-        // *** IMPORTANTE: Remove a inscrição do evento ***
-        // GameSceneManager.OnAllPlayersSpawned -= OnPlayersSpawned;
-        
         StopAllCoroutines();
     }
 
     public void RetryCurrentWave()
     {
+        Debug.Log("[WaveManager] ==== RetryCurrentWave CHAMADO ====");
+        
         if (currentWaveIndex < 0 || currentWaveIndex >= waves.Count)
         {
-             Debug.LogError("Tentando Retry, mas o índice da onda é inválido.");
+             Debug.LogError("[WaveManager] Tentando Retry, mas o índice da onda é inválido.");
              return;
         }
 
+        // Para todas as corrotinas (spawners, etc)
         StopAllCoroutines();
 
+        // 1. Destrói todos os "minions" (EnemyController)
+        Debug.Log("[WaveManager] Procurando e destruindo EnemyControllers...");
         var enemies = FindObjectsOfType<EnemyController>();
         foreach (var enemy in enemies)
         {
@@ -183,8 +165,57 @@ public class WaveManager : MonoBehaviour
                 Destroy(enemy.gameObject);
             }
         }
+        Debug.Log($"[WaveManager] {enemies.Length} EnemyControllers marcados para Destroy().");
+
+
+        // 2. Encontra e destrói o Linker de Vida
+        Debug.Log("[WaveManager] Procurando BossHealthLinker...");
+        BossHealthLinker oldLinker = FindObjectOfType<BossHealthLinker>();
+        if (oldLinker != null)
+        {
+            Debug.LogWarning($"[WaveManager] !! Encontrou BossHealthLinker ANTIGO: {oldLinker.name} (ID: {oldLinker.GetInstanceID()}). Marcando para Destroy().. !!");
+            Destroy(oldLinker.gameObject);
+        }
+        else
+        {
+            Debug.Log("[WaveManager] ...Nenhum BossHealthLinker encontrado para destruir.");
+        }
+
+        // 3. Destrói as partes do Boss (Paredes)
+        Debug.Log("[WaveManager] Procurando e destruindo WallBossControllers...");
+        WallBossController[] walls = FindObjectsOfType<WallBossController>();
+        foreach (WallBossController wall in walls)
+        {
+            if (wall != null)
+            {
+                Destroy(wall.gameObject);
+            }
+        }
+        Debug.Log($"[WaveManager] {walls.Length} WallBossControllers marcados para Destroy().");   
+
+        // 5. Limpa a referência interna
         currentBossInstance = null;
 
+        // 6. *** MUDANÇA CRÍTICA: Inicia a CORROTINA DE ESPERA ***
+        Debug.Log("[WaveManager] Chamando Corrotina de espera (WaitAndStartWave_Internal) para permitir que Destroy() termine.");
+        StartCoroutine(WaitAndStartWave_Internal());
+    }
+
+    /// <summary>
+    /// Espera 1 frame para garantir que todos os objetos marcados com Destroy()
+    /// sejam removidos da cena antes de iniciar a próxima onda.
+    /// Isso previne a BossUIHealth de se conectar ao Linker antigo.
+    /// </summary>
+    private IEnumerator WaitAndStartWave_Internal()
+    {
+        // Espera UM frame. Isto dá ao Unity tempo para processar
+        // todas as chamadas 'Destroy()' feitas no RetryCurrentWave.
+        Debug.Log("[WaveManager_Internal] ...A aguardar 1 frame para 'Destroy' completar...");
+        yield return null; 
+        
+        // Agora que os objetos antigos (Linker, Walls, Zones) foram 100% destruídos...
+        // Podemos iniciar a onda com segurança.
+        Debug.Log("[WaveManager_Internal] ...Frame aguardado. A chamar StartNextWave(false).");
         StartCoroutine(StartNextWave(false));
     }
 
@@ -217,32 +248,28 @@ public class WaveManager : MonoBehaviour
             if (hs != null)
             {
                 hs.ResetForRetry();
-                // --- ADICIONE ESTA LÓGICA ---
-                // Agora, recria a barra de vida (se necessário)
                 if (gameSceneManager != null)
                 {
                     AgentManager agent = playerTarget.GetComponent<AgentManager>();
                     if (agent != null)
                     {
-                        // Só spawnamos a barra se for um Bot
-                        // OU se for Humano MAS não for o Dono (IsOwner)
-                        // (O Jogador local usa o HUD estático)
                         if (agent.IsPlayerBot() || (agent.IsOwner == false))
                         {
                             gameSceneManager.SpawnHealthBarFor(hs);
                         }
                     }
-                }                
+                }           
             }
         }
     }
 
     IEnumerator StartNextWave(bool advanceWaveIndex = true)
     {
-        // *** NOVA VERIFICAÇÃO: Espera se os jogadores não estão prontos ***
-Debug.Log("[WaveManager] A aguardar sinal do GameSceneManager...");
-yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
-        Debug.Log("[WaveManager] Sinal recebido! A iniciar a onda.");
+        Debug.Log($"[WaveManager] ==== StartNextWave INICIADO (advanceWaveIndex={advanceWaveIndex}) ====");
+
+        Debug.Log("[WaveManager] ...A aguardar sinal do GameSceneManager.AllPlayersSpawned...");
+        yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
+        Debug.Log("[WaveManager] ...Sinal recebido! A continuar a onda.");
 
         if (advanceWaveIndex)
         {
@@ -278,7 +305,22 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
             Debug.LogWarning("Não foi possível encontrar o jogador local para posicionar.");
         }
 
-        // *** AGORA O PLAYER COUNT DEVE ESTAR CORRETO ***
+        // --- LÓGICA DA UI ATUALIZADA ---
+        bool isGreaterBossWave = currentWave.enemyGroups.Any(group => group.isGreaterBoss);
+        Debug.Log($"[WaveManager] ...Esta é uma onda de Greater Boss? {isGreaterBossWave}");
+        if (bossHealthUI != null)
+        {
+            // Apenas ativa o GameObject. A UI não fará nada até que entreguemos o Linker.
+            Debug.Log($"[WaveManager] ...Ativando o GameObject bossHealthUI ({isGreaterBossWave})");
+            bossHealthUI.SetActive(isGreaterBossWave);
+        }
+        else if (isGreaterBossWave)
+        {
+            Debug.LogWarning("[WaveManager] Esta é uma onda de Greater Boss, mas a referência 'Boss Health UI' não foi definida no Inspector!");
+        }
+        // --- FIM DA LÓGICA DA UI ---
+
+
         int playerCount = 1;
         if (PlayerManager.Instance != null)
         {
@@ -286,9 +328,10 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
             playerCount = Mathf.Max(1, playerCount);
         }
         
-     
-        OnNewWaveStarted?.Invoke(currentWave.waveName ?? $"Onda {currentWaveIndex + 1}");
        
+        Debug.Log($"[WaveManager] ...Invocando evento OnNewWaveStarted (Onda: {currentWave.waveName})");
+        OnNewWaveStarted?.Invoke(currentWave.waveName ?? $"Onda {currentWaveIndex + 1}");
+        
         List<Coroutine> runningSpawners = new List<Coroutine>();
         foreach (var group in currentWave.enemyGroups)
         {
@@ -306,6 +349,7 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
             yield return null;
         }
         currentBossInstance = null;
+        Debug.Log("[WaveManager] ...Todos os EnemyControllers foram destruídos. Onda terminada.");
 
         Coin[] remainingCoins = FindObjectsOfType<Coin>();
         if (remainingCoins.Length > 0)
@@ -327,6 +371,7 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
 
         if (UpgradeManager.Instance != null)
         {
+            Debug.Log("[WaveManager] ...Mostrando tela de Upgrade.");
             UpgradeManager.Instance.ShowUpgradeScreen();
         }
         else
@@ -336,10 +381,8 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
         }
     }
 
-    // *** MÉTODO: Encontra o jogador local ***
     private Transform FindLocalPlayer()
     {
-        // Busca por AgentManager que é dono e não é bot
         var agents = FindObjectsOfType<AgentManager>();
         foreach (var agent in agents)
         {
@@ -348,13 +391,13 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
                 return agent.transform;
             }
         }
-
         Debug.LogWarning("[WaveManager] Não foi possível encontrar o jogador local!");
         return null;
     }
 
     private void HandleShopClosed()
     {
+        Debug.Log("[WaveManager] HandleShopClosed() chamado. Iniciando próxima onda.");
         StartCoroutine(StartNextWave(true));
     }
 
@@ -369,6 +412,7 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
 
         if (group.isBossGroup)
         {
+            Debug.Log($"[WaveManager] !! SPAWNANDO GRUPO DE BOSS: {group.enemyPrefab.name} !!");
             spawnPosition = waves[currentWaveIndex].bossFixedSpawnPosition;
             currentBossInstance = SpawnEnemy(group.enemyPrefab, spawnPosition, baseHealthMultiplier); 
             yield break;
@@ -392,9 +436,7 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
                 groupHealthMultiplier = baseHealthMultiplier;
             }
         }
-        Debug.Log(scaledCount);
-        Debug.Log(baseCount);
-        Debug.Log("");
+
         if (!isInfiniteSpawn)
         {
             for (int i = 0; i < scaledCount; i++)
@@ -450,6 +492,31 @@ yield return new WaitUntil(() => GameSceneManager.AllPlayersSpawned);
         }
 
         GameObject enemyInstance = Instantiate(enemyPrefab, position, Quaternion.identity);
+
+        Debug.Log($"[WaveManager] SpawnEnemy INSTANCIOU: {enemyInstance.name} (ID: {enemyInstance.GetInstanceID()})");
+
+        // --- INÍCIO DA NOVA LÓGICA DE CONEXÃO ---
+        
+        // Procura o Linker no prefab que acabamos de spawnar (em filhos, inclusive)
+        BossHealthLinker newLinker = enemyInstance.GetComponentInChildren<BossHealthLinker>(true);
+        
+        if (newLinker != null)
+        {
+            Debug.LogWarning($"[WaveManager] !! Um BossHealthLinker (ID: {newLinker.GetInstanceID()}) foi encontrado no prefab spawnado!");
+            
+            if (bossUIHealthScript != null)
+            {
+                // !! ENTREGA O LINKER DIRETAMENTE PARA A UI !!
+                Debug.Log("[WaveManager] ...Entregando este NOVO linker para o bossUIHealthScript.");
+                bossUIHealthScript.Initialize(newLinker);
+            }
+            else
+            {
+                Debug.LogError("[WaveManager] ...Spawnou um Boss com Linker, mas a referência 'bossUIHealthScript' é NULA! A UI de vida não vai funcionar.");
+            }
+        }
+        // --- FIM DA NOVA LÓGICA DE CONEXÃO ---
+
 
         HealthSystem enemyHealth = enemyInstance.GetComponent<HealthSystem>();
         if (enemyHealth != null)

@@ -9,6 +9,7 @@ TagManager:
   - Scenary
   - Bot
   - GameOverPanel
+  - GreaterBoss
   layers:
   - Default
   - TransparentFX

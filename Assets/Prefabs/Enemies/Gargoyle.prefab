@@ -15,8 +15,8 @@ GameObject:
   - component: {fileID: 3945399152545223562}
   - component: {fileID: 8142928547277015522}
   - component: {fileID: 949095876173313355}
-  - component: {fileID: 3625692136842929782}
   - component: {fileID: -919836191964431979}
+  - component: {fileID: 3625692136842929782}
   - component: {fileID: -3740215358912034199}
   m_Layer: 6
   m_Name: Gargoyle
@@ -213,26 +213,6 @@ MonoBehaviour:
     dropChance: 1
     minAmount: 1
     maxAmount: 1
---- !u!114 &3625692136842929782
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2206360170153121592}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5bafcf9e2d39b6b4d9986f879f9d4f7f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  projectilePrefab: {fileID: 2390562463378662168, guid: 4a3700ee5fecd4d4b95ece153f622e77, type: 3}
-  firePoint: {fileID: 6969154949340270906}
-  projectileDamage: 10
-  projectileSpeed: 12
-  projectileLifetime: 5
-  fireRateInterval: 1
-  shootingRange: 13
-  playerTarget: {fileID: 0}
 --- !u!114 &-919836191964431979
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -253,6 +233,26 @@ MonoBehaviour:
   SpawnWithObservers: 1
   DontDestroyWithOwner: 0
   AutoObjectParentSync: 1
+--- !u!114 &3625692136842929782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2206360170153121592}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bafcf9e2d39b6b4d9986f879f9d4f7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  projectilePrefab: {fileID: 2390562463378662168, guid: 4a3700ee5fecd4d4b95ece153f622e77, type: 3}
+  firePoint: {fileID: 6969154949340270906}
+  projectileDamage: 10
+  projectileSpeed: 12
+  projectileLifetime: 5
+  fireRateInterval: 1
+  shootingRange: 13
+  playerTarget: {fileID: 0}
 --- !u!114 &-3740215358912034199
 MonoBehaviour:
   m_ObjectHideFlags: 0

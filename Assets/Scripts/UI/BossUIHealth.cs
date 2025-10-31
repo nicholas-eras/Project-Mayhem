@@ -17,94 +17,73 @@ public class BossUIHealth : MonoBehaviour
     [Tooltip("O GameObject que contém todos os elementos da UI da vida.")]
     [SerializeField] private GameObject healthUIRoot;
     
-    private BossHealthLinker bossLinker;
-    private bool isInitialized = false;
+    private BossHealthLinker bossLinker; // Referência ao boss atual
+
+    void OnEnable()
+    {
+        // Log para quando o WaveManager ativa este GameObject
+        Debug.Log($"[BossUIHealth] !! OnEnable() !! O GameObject '{this.name}' foi ATIVADO.");
+        // Não fazemos mais nada, esperamos o WaveManager chamar Initialize()
+    }
 
     void Start()
     {
-        // 1. Configura o nome do Boss
+        Debug.Log("[BossUIHealth] Start() chamado.");
+        // 1. Configura o nome do Boss (pode ser fixo)
         if (bossNameText != null)
         {
-            bossNameText.text = "Greater Boss"; 
+            bossNameText.text = "Wall of Flesh"; 
         }
         
-        // 2. Oculta o Root por padrão até encontrar o Linker.
-        healthUIRoot?.SetActive(false); 
-        
-        // 3. INSCREVE-SE NO EVENTO DE FECHAMENTO DA LOJA
-        if (UpgradeManager.Instance != null)
-        {
-            UpgradeManager.Instance.OnShopClosed += OnShopClosed;
-        }
+        // 2. O WaveManager é quem controla se o root está ativo ou não.
+        // O HideHealthUI() cuidará de desativá-lo se o boss morrer.
     }
 
     void OnDestroy()
     {
-        // Limpa a inscrição
-        if (UpgradeManager.Instance != null)
-        {
-            UpgradeManager.Instance.OnShopClosed -= OnShopClosed;
-        }
-        
+        // Limpa eventos se formos destruídos enquanto conectados
         if (bossLinker != null)
         {
+            Debug.Log($"[BossUIHealth] OnDestroy: Limpando eventos do Linker (ID: {bossLinker.GetInstanceID()})");
             bossLinker.OnBossHealthChanged -= UpdateHealthUI;
             bossLinker.OnBossDefeated.RemoveListener(HideHealthUI);
         }
     }
     
-    void Update()
-    {
-        // 1. Se já estiver inicializado, não faça nada.
-        if (isInitialized)
-        {
-            return;
-        }                        
-
-        // 2. Tenta encontrar o Linker (o Boss já pode ter sido instanciado pelo WaveManager)
-        bossLinker = FindObjectOfType<BossHealthLinker>();
-
-        if (bossLinker != null)
-        {
-            // Se encontrou, inicializa a UI
-            InitializeUI();
-        }
-    }
-    
-    // =================================================================
-    // NOVO MÉTODO: Chamado quando o Shop fecha, para reiniciar a busca.
-    // =================================================================
-    private void OnShopClosed()
-    {
-        // Quando a loja fecha, a Wave está prestes a começar ou já começou.
-        // O Boss pode ser instanciado aqui. Forçamos a flag de inicialização para falso
-        // (caso tivéssemos inicializado antes, o que é improvável aqui) e garantimos
-        // que o Update() continue procurando o novo Boss Linker da nova Wave.
-        isInitialized = false;
-        
-        // NOVO: Chamamos o Update manualmente uma vez para tentar encontrar o Boss
-        // imediatamente, caso ele tenha sido instanciado no mesmo frame do fechamento
-        // da loja.
-        Update(); 
-    }
+    // O método Update() foi removido.
+    // O método OnShopClosed() foi removido.
     
     /// <summary>
-    /// Conecta a UI aos eventos do BossHealthLinker.
-    /// Chamado APENAS QUANDO O LINKER É ENCONTRADO NO UPDATE().
+    /// Método PÚBLICO chamado pelo WaveManager para forçar a conexão
+    /// com um BossHealthLinker específico.
     /// </summary>
-    private void InitializeUI()
+    public void Initialize(BossHealthLinker linkerToConnect)
     {
-        if (bossLinker == null || isInitialized) return;
-        
-        // VERIFICAÇÃO DE ERRO: Garante que a referência do root está no Inspector
-        if (healthUIRoot == null)
+        if (linkerToConnect == null)
         {
-            Debug.LogError("[BossUIHealth] O campo 'Health UI Root' NÃO está atribuído no Inspector! Não é possível exibir a vida.");
-            isInitialized = true; // Para de tentar conectar
+            Debug.LogError("[BossUIHealth] Initialize foi chamado com um Linker NULO!");
             return;
         }
 
-        // Garante que a UI esteja visível
+        // Se já estávamos conectados a um boss anterior (de um retry falho), limpa os eventos
+        if (bossLinker != null)
+        {
+            bossLinker.OnBossHealthChanged -= UpdateHealthUI;
+            bossLinker.OnBossDefeated.RemoveListener(HideHealthUI);
+        }
+
+        // Conecta ao novo boss
+        bossLinker = linkerToConnect;
+        
+        Debug.Log($"[BossUIHealth] ==== InitializeUI CONECTANDO (ID: {bossLinker.GetInstanceID()}) ====");
+        
+        if (healthUIRoot == null)
+        {
+            Debug.LogError("[BossUIHealth] O campo 'Health UI Root' NÃO está atribuído!");
+            return;
+        }
+
+        // Garante que a UI esteja visível (caso o WaveManager já a tenha ativado)
         healthUIRoot.SetActive(true);
         
         // 1. Se inscreve no evento de mudança de vida
@@ -114,9 +93,8 @@ public class BossUIHealth : MonoBehaviour
         bossLinker.OnBossDefeated.AddListener(HideHealthUI);
         
         // 3. Define a vida inicial (para preencher a barra no início)
+        Debug.Log($"[BossUIHealth] ...Definindo vida inicial (da UI) para {bossLinker.CurrentHealth} / {bossLinker.initialTotalHealth}");
         UpdateHealthUI(bossLinker.CurrentHealth, bossLinker.initialTotalHealth);
-        
-        isInitialized = true;
     }
 
     private void UpdateHealthUI(float currentHealth, float maxHealth)
@@ -137,7 +115,16 @@ public class BossUIHealth : MonoBehaviour
 
     private void HideHealthUI()
     {
+        Debug.Log($"[BossUIHealth] HideHealthUI() chamado pelo evento OnBossDefeated.");
         // Oculta o painel de vida quando o Boss é derrotado.
         healthUIRoot?.SetActive(false);
+
+        // Quando o boss morre, paramos de ouvir para evitar erros
+        if (bossLinker != null)
+        {
+            bossLinker.OnBossHealthChanged -= UpdateHealthUI;
+            bossLinker.OnBossDefeated.RemoveListener(HideHealthUI);
+            bossLinker = null; // Limpa a referência
+        }
     }
 }

@@ -189,7 +189,7 @@ MonoBehaviour:
   fireRateMultiplier: 1
   rangeMultiplier: 1
   weaponPrefabsForTesting:
-  - {fileID: 4156104687730460143, guid: d0d7b918784e04244b30c77168b36567, type: 3}
+  - {fileID: 4156104687730460143, guid: 36a0fead6aab2aa4d9f53af2e5d18f88, type: 3}
 --- !u!114 &1894308433326467658
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -17,8 +17,6 @@ public class GameManager : MonoBehaviour
     [SerializeField] private string mapSelectSceneName = "MapSelectScene";
 
     // --- Variáveis de UI ---
-    // Estas referências são procuradas e preenchidas automaticamente
-    // pela lógica OnSceneLoaded() quando uma cena de jogo carrega.
     private GameObject gameOverPanel;
     private GameObject retryButton;
 
@@ -28,6 +26,8 @@ public class GameManager : MonoBehaviour
     public ulong[] LastLobbyClientIds { get; set; } = null;
 
     private bool isGameOver = false; // Flag interna para evitar múltiplas chamadas
+    private bool isRetrying = false; // Flag de segurança para evitar re-trigger do Game Over
+    private WaveManager currentWaveManager; // Referência ao WaveManager da cena
 
     
     void Awake()
@@ -60,6 +60,7 @@ public class GameManager : MonoBehaviour
     void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
+        // Não precisamos mais limpar o evento do WaveManager aqui
     }
 
     /// <summary>
@@ -67,32 +68,43 @@ public class GameManager : MonoBehaviour
     /// </summary>
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Se voltámos ao menu, limpa as referências da UI do jogo.
+        Debug.Log($"[GameManager] Cena '{scene.name}' carregada.");
+
+        // Reseta as flags de estado
+        isGameOver = false;
+        isRetrying = false; 
+
         if (scene.name == mapSelectSceneName)
         {
+            // Se voltamos ao menu, limpa as referências da UI do jogo.
             gameOverPanel = null;
             retryButton = null;
-            isGameOver = false; // Garante que o estado de G.O. é resetado
+            currentWaveManager = null; // Limpa a referência
         }
         else // Se carregámos QUALQUER outra cena (Jungle, Cyberpunk, etc.)
         {
             // Procura o painel de Game Over nessa nova cena.
             FindAndAssignGameOverPanel(scene);
+
+            // Apenas encontra o WaveManager, não se inscreve mais em eventos dele
+            currentWaveManager = FindObjectOfType<WaveManager>();
+            if (currentWaveManager != null)
+            {
+                Debug.Log("[GameManager] WaveManager encontrado.");
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] Não encontrou WaveManager na cena.");
+            }
         }
     }
-
-    // Em GameManager.cs
 
     /// <summary>
     /// Procura o painel de Game Over e o botão de Retry na cena atual, USANDO TAGS.
     /// </summary>
     private void FindAndAssignGameOverPanel(Scene scene)
     {
-        // !! IMPORTANTE !!
-        // Garanta que criou esta Tag e a atribuiu nos seus prefabs de UI
         string panelTag = "GameOverPanel";
-
-        // Nomes dos botões (isto ainda é por nome, o que é OK se forem filhos)
         string retryButtonName = "RetryButton";
 
         // Usamos Resources.FindObjectsOfTypeAll para encontrar objetos INATIVOS
@@ -122,45 +134,55 @@ public class GameManager : MonoBehaviour
         }
 
         // Se o loop terminar e não encontrámos...
-        Debug.LogWarning($"[GameManager] Carreguei '{scene.name}' mas não encontrei NENHUM objeto com Tag '{panelTag}'. O fallback de delay será usado.");
+        Debug.LogWarning($"[GameManager] Carreguei '{scene.name}' mas não encontrei NENHUM objeto com Tag '{panelTag}'.");
         gameOverPanel = null;
     }
-    
+
     // --- LÓGICA DE ESTADO DE JOGO (GAME OVER / VITÓRIA) ---
 
     /// <summary>
     /// Chamado EXCLUSIVAMENTE pelo PlayerManager quando o último jogador/bot morre.
+    /// Decide se a opção de Tentar Novamente deve ser mostrada.
     /// </summary>
     public void TriggerGameOverFromPlayerManager()
     {
-        if (isGameOver) return; 
+        Debug.Log($"[GameManager] !! TriggerGameOverFromPlayerManager CHAMADO !! -> isGameOver={isGameOver}, isRetrying={isRetrying}");
+
+        if (isGameOver || isRetrying)
+        {
+            Debug.LogWarning("[GameManager] ...Chamada de Game Over IGNORADA.");
+            return;
+        }
         isGameOver = true;
+
+        // 1. Pausa o jogo
         Time.timeScale = 0f;
 
-        // Verifica se a onda era um "Greater Boss Wave"
-        WaveManager waveManager = FindObjectOfType<WaveManager>();
-        bool allowRetry = (waveManager != null && waveManager.IsCurrentWaveGreaterBoss);
+        // 2. Verifica se existe um objeto ATIVO na cena com a Tag "GreaterBoss"
+        bool isBossLevel = (GameObject.FindGameObjectWithTag("GreaterBoss") != null);
+        Debug.Log($"[GameManager] ...É um nível de Boss? {isBossLevel}");
 
-        // Ativa a UI (se a encontrou na cena)
-        if (gameOverPanel != null)
+        // 3. Ativa a UI de Game Over
+        if (gameOverPanel != null && isBossLevel)
         {
-            gameOverPanel.SetActive(true); 
+            Debug.Log("[GameManager] ...Mostrando painel de Game Over.");
+            gameOverPanel.SetActive(true);
+
             if (retryButton != null)
             {
-                retryButton.SetActive(allowRetry); 
+                retryButton.SetActive(true);
             }
         }
         else
         {
-            // Fallback: Se não encontrou o painel, volta ao menu após um delay
-            Debug.Log("[GameManager] gameOverPanel é nulo. A usar fallback de delay.");
-            StartCoroutine(LoadMapSelectAfterDelay(2.0f)); // <-- Pode ajustar este delay
+            Debug.Log("[GameManager] ...Nível normal ou UI nula. Voltando ao menu (delay).");
+            StartCoroutine(LoadMapSelectAfterDelay(2.0f));
         }
-    }
+    }   
 
-     /// <summary>
-     /// Chamado pelo WaveManager quando todas as ondas são completadas (Vitória).
-     /// </summary>
+    /// <summary>
+    /// Chamado pelo WaveManager quando todas as ondas são completadas (Vitória).
+    /// </summary>
     public void TriggerVictory()
     {
         if (isGameOver) return;
@@ -169,7 +191,6 @@ public class GameManager : MonoBehaviour
 
         // TODO: Mostrar um painel de Vitória?
 
-        // Por enquanto, apenas volta ao menu após um delay
         StartCoroutine(LoadMapSelectAfterDelay(5.0f));
     }
 
@@ -181,8 +202,6 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void OnButtonQuitToMenu()
     {
-        // Se somos o Host (ou offline), carregamos a cena
-        // (o Host levará todos junto)
         CleanupAndLoadScene(mapSelectSceneName);
     }
 
@@ -202,24 +221,44 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// Chamado pelo botão "Tentar Novamente". Reinicia apenas a wave atual.
     /// </summary>
+
     public void OnButtonRetryWave()
     {
+        Debug.Log("[GameManager] ==== BOTÃO 'TENTAR NOVAMENTE' PRESSIONADO ====");
+
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.IsHost)
         {
             Debug.LogWarning("Cliente tentou dar Retry na wave. Apenas o Host pode fazer isso.");
             return; 
         }
 
-        WaveManager waveManager = FindObjectOfType<WaveManager>();
-
-        if (waveManager != null)
+        // --- INÍCIO DA CORREÇÃO ---
+        // 1. Tenta usar a referência cacheada (que pegamos no OnSceneLoaded)
+        if (currentWaveManager == null)
         {
-            // Esconde o painel e restaura o estado do jogo
+            // 2. Se for nula (devido à Race Condition do OnSceneLoaded),
+            //    procuramos DE NOVO, mas desta vez incluindo objetos INATIVOS.
+            Debug.LogWarning("[GameManager] currentWaveManager estava nulo. Tentando busca profunda com FindObjectOfType<WaveManager>(true)...");
+            currentWaveManager = FindObjectOfType<WaveManager>(true);
+        }
+        // --- FIM DA CORREÇÃO ---
+
+
+        // 3. Agora checamos DE NOVO. Se AINDA for nulo, o WaveManager realmente não existe.
+        if (currentWaveManager != null)
+        {
+            Debug.Log("[GameManager] WaveManager encontrado. Escondendo painel e restaurando o tempo.");
             if (gameOverPanel != null) gameOverPanel.SetActive(false);
             isGameOver = false; 
+            Debug.Log("[GameManager] !! SETANDO isRetrying = true !!");
+            isRetrying = true; 
             Time.timeScale = 1.0f; 
 
+            // Inicia um timer para limpar a flag de retry.
+            StartCoroutine(ClearRetryFlagAfterDelay(0.5f));
+
             // "Revive" todos
+            Debug.Log("[GameManager] Ressuscitando jogadores...");
             PlayerTargetable[] playersToReset = FindObjectsOfType<PlayerTargetable>(true);
             foreach(var playerTarget in playersToReset)
             {
@@ -234,13 +273,29 @@ public class GameManager : MonoBehaviour
                 }
             }
             
-            waveManager.RetryCurrentWave();
+            Debug.Log("[GameManager] Chamando waveManager.RetryCurrentWave()...");
+            currentWaveManager.RetryCurrentWave(); // Usa a variável de classe
+            Debug.Log("[GameManager] ...Chamada para RetryCurrentWave() retornou.");
         }
         else
         {
-            Debug.LogError("[GameManager] Não foi possível Tentar Novamente. WaveManager não encontrado! Reiniciando a cena...");
+            // Se chegamos aqui, a busca profunda (true) também falhou.
+            Debug.LogError("[GameManager] Não foi possível Tentar Novamente. A busca profunda também falhou. WaveManager não encontrado! Reiniciando a cena...");
             OnButtonRestartScene();
         }
+    }
+    /// <summary>
+    /// Limpa a flag 'isRetrying' após um delay fixo, em tempo real.
+    /// Isso cria uma "janela de imunidade" contra o TriggerGameOver
+    /// enquanto a nova onda está sendo processada.
+    /// </summary>
+    private IEnumerator ClearRetryFlagAfterDelay(float delay)
+    {
+        // Espera em TEMPO REAL, caso o Time.timeScale ainda esteja 0
+        yield return new WaitForSecondsRealtime(delay);
+        
+        Debug.LogWarning($"[GameManager] !! FIM DO DELAY DE SEGURANÇA. Setando isRetrying = false. O jogo pode dar Game Over agora. !!");
+        isRetrying = false;
     }
 
     // --- LÓGICA DE TRANSIÇÃO DE CENA ---
@@ -267,13 +322,11 @@ public class GameManager : MonoBehaviour
         {
             if (NetworkManager.Singleton.IsHost)
             {
-                // Host usa o SceneManager da rede para carregar a cena para todos.
                 Debug.Log($"[GameManager] Host a carregar a cena '{sceneName}' para todos.");
                 NetworkManager.Singleton.SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
             }
             else if (NetworkManager.Singleton.IsClient)
             {
-                // Cliente só pode voltar ao menu, o que o desconecta.
                 if (sceneName == mapSelectSceneName)
                 {
                     Debug.Log("[GameManager] Cliente a voltar ao menu. A desligar (Shutdown).");
@@ -293,7 +346,7 @@ public class GameManager : MonoBehaviour
                 SceneManager.LoadScene(sceneName);
             }
         }
-    }   
+    }   
 
     /// <summary>
     /// Corrotina auxiliar para garantir que a cena local seja carregada após o Shutdown do cliente.
